@@ -21,36 +21,22 @@ class Households(Agent):
         super().__init__(unique_id, model)
         self.is_adapted = False  # Initial adaptation status set to False
         
-        while True:
-            self.age = np.random.normal(34, 20)
-            
-            if self.age >= 18: #if age is above 18, exit the loop. Age above 18 is set.
-                break
+        self.background = random.random()
+        self.threat_appraisal = random.random()
+        self.coping_appraisal = random.random()
+        self.climate_related_beliefs = random.random()
+        self.preceding_flood_engagement = random.random()
+        self.external_influence = random.random()
+      
+        self.budget = random.randint(1000, 7000) #maybe two additional model parameters
         
-        # self.age = random.triangular(18, 70, 34)
-    
-        education_level = {'low': 0.25, 'middle': 0.5, 'high': 0.75}
-        self.education_level = random.choice(list(education_level.values()))
+        #{1: Not Implemented, 2:Implementing, 3: Implemented}
         
-        self.budget = 1000
-        
-        self.self_efficacy = random.random()
-        
-        self.undergone_adaptation_measures = 0 #binary variable -> 0 = no measures undergone, 1 = measures undergone
-        # self.undergone_adaptation_measures = {'dry-proofing': 0, 'wet-proofing': 0, 'elevation': 0} #previous measures taken
-        
-        self.dry_proofing = False
-        self.wet_proofing = False
-        self.elevation = False
+        self.dry_proofing = 1
+        self.wet_proofing = 1
+        self.elevation = 1
         
         self.prior_hazard_experience = 0 #cumulative sum of previous financial losses due to flood
-        
-        self.climate_related_beliefs = random.random() #range between 0 and 1
-        # self.climate_related_beliefs = random.choice([0, 1]) -> on or off
-        
-        self.social_network_influence = random.random()
-        
-        self.social_media_influence = random.random()
         
         # self.protection_level -> maybe add later
         
@@ -87,59 +73,67 @@ class Households(Agent):
         self.flood_damage_actual = calculate_basic_flood_damage(flood_depth=self.flood_depth_actual)
     
     def determine_AM(self):
-        # NEEDS TO BE SCALED
-        background = self.age * self.education_level
-        threat_appraisal = self.flood_damage_estimated
-        coping_appraisal = self.budget * self.self_efficacy
-        climate_related_beliefs = self.climate_related_beliefs
-        preceding_flood_engagement = self.undergone_adaptation_measures * self.prior_hazard_experience
-        external_influence = self.social_network_influence * self.social_media_influence
-        # ADD WEIGHTS
-        self.AM = w_background * background 
-                + w_threat_appraisal * threat_appraisal 
-                + w_coping_appraisal * coping_appraisal 
-                + w_climate_related_beliefs * climate_related_beliefs 
-                + w_preceding_flood_engagement * preceding_flood_engagement 
-                + w_external_influence * external_influence
+        self.AM = np.mean([self.background, self.threat_appraisal, 
+                        self.coping_appraisal, self.climate_related_beliefs, 
+                        self.preceding_flood_engagement, self.external_influence])
         return self.AM
     
     def check_elevation(self):
-        # check whether the house is not already elevated
-        if not self.elevation:
-            # DETERMINE COST_ELEVATION
-            if self.budget >= cost_elevation:
-                self.elevation = True
-                self.budget -= cost_elevation
-                return True
-        return False
-
-    def check_wet_proofing(self):
-        # check whether wet_proofing and elevation are not already implemented
-        if not self.wet_proofing and not self.check_elevation():
-            #DETERMINE COST_WET_PROOFING
-            if self.budget >= cost_wet_proofing:
-                self.wet_proofing = True
-                self.budget -= cost_wet_proofing
-                return True
-        return False
+        if self.detached == 1: #check if this household is detached
+            if self.elevation == 1:
+                #Agent can choose to elevate house in this timestep
+                # DETERMINE COST_ELEVATION
+                if self.budget >= self.model.elevation_cost:
+                        print("Agent has sufficient budget for elevation, starts implementing here, budget=", self.budget)
+                        self.elevation = 2
+                        self.budget -= self.model.elevation_cost
+                        self.elevation_time_counter = 1 #this tick counts as one unit of time for implementing elevation
+                
+                
+            elif self.elevation == 2:
+                #Agent is implementing elevation
+                print('this agent is implementing elevation', self.elevation_time_counter)
+                if self.elevation_time_counter >= self.model.elevation_time:
+                    self.elevation = 3
+                else:
+                    #Implementation time has not been reached, advance counter by 1
+                    self.elevation_time_counter += 1
+                #Check if implementation time has been reached during this step
             
-    def check_dry_proofing(self):
-        # check whether there are no measures implemented
-        if not self.dry_proofing and not self.check_elevation() and not self.check_wet_proofing():
-            #DETERMINE COST_DRY_PROOFING
-            if self.budget >= cost_dry_proofing:
-                self.dry_proofing = True
-                self.budget -= cost_dry_proofing
-                return True
-        return False
+            else:
+                # Agent has implemented elevation as a measure already
+                print("Elevation implementation complete")
+                
+
+    # def check_wet_proofing(self):
+    #     # check whether wet_proofing and elevation are not already implemented
+    #     if not self.wet_proofing and not self.check_elevation():
+    #         #DETERMINE COST_WET_PROOFING
+    #         if self.budget >= cost_wet_proofing:
+    #             self.wet_proofing = True
+    #             self.budget -= cost_wet_proofing
+    #             return True
+    #     return False
+            
+    # def check_dry_proofing(self):
+    #     # check whether there are no measures implemented
+    #     if not self.dry_proofing and not self.check_elevation() and not self.check_wet_proofing():
+    #         #DETERMINE COST_DRY_PROOFING
+    #         if self.budget >= cost_dry_proofing:
+    #             self.dry_proofing = True
+    #             self.budget -= cost_dry_proofing
+    #             return True
+    #     return False
         
     def choose_measure(self):
         # DETERMINE THRESHOLD
+        # intention_action_gap = 0.3 #implement as model parameter
+        threshold = 1-self.model.intention_action_gap
         if self.AM >= threshold:
-            if self.detached == 1:
-                self.check_elevation()
-            self.check_wet_proofing()
-            self.check_dry_proofing()
+
+            self.check_elevation()
+            # self.check_wet_proofing()
+            # self.check_dry_proofing()
               
     # Function to count friends who can be influencial.
     def count_neighbors(self, radius):

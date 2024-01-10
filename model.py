@@ -8,6 +8,7 @@ import geopandas as gpd
 import rasterio as rs
 import matplotlib.pyplot as plt
 import numpy as np
+import random
 
 # Import the agent class(es) from agents.py
 from agents import Households
@@ -39,6 +40,12 @@ class AdaptationModel(Model):
                  number_of_edges = 3,
                  # number of nearest neighbours for WS social network
                  number_of_nearest_neighbours = 5,
+                 
+                #intention action gap which ensures that only a certain percentage of households can implement a measure
+                intention_action_gap = 0.4,
+                
+                elevation_time = 4, #time steps
+                elevation_cost = 5000, # cost of implementing elevation
                  ):
         
         super().__init__(seed = seed)
@@ -52,6 +59,10 @@ class AdaptationModel(Model):
         self.probability_of_network_connection = probability_of_network_connection
         self.number_of_edges = number_of_edges
         self.number_of_nearest_neighbours = number_of_nearest_neighbours
+        
+        self.intention_action_gap = intention_action_gap
+        self.elevation_cost = elevation_cost
+        self.elevation_time = elevation_time
 
         # generating the graph according to the network used and the network parameters specified
         self.G = self.initialize_network()
@@ -84,8 +95,9 @@ class AdaptationModel(Model):
                         "FloodDepthActual": "flood_depth_actual",
                         "FloodDamageActual" : "flood_damage_actual",
                         "IsAdapted": "is_adapted",
-                        "FriendsCount": lambda a: a.count_friends(radius=1),
+                        "NeighborsCount": lambda a: a.count_neighbors(radius=1),
                         "location":"location",
+                        "Adaptation_Motivation": lambda a: a.determine_AM()
                         # ... other reporters ...
                         }
         #set up the data collector 
@@ -182,13 +194,26 @@ class AdaptationModel(Model):
         assume local flooding instead of global flooding). The actual flood depth can be 
         estimated differently
         """
-        if self.schedule.steps == 5:
-            for agent in self.schedule.agents:
-                # Calculate the actual flood depth as a random number between 0.5 and 1.2 times the estimated flood depth
-                agent.flood_depth_actual = random.uniform(0.5, 1.2) * agent.flood_depth_estimated
-                # calculate the actual flood damage given the actual flood depth
-                agent.flood_damage_actual = calculate_basic_flood_damage(agent.flood_depth_actual)
         
         # Collect data and advance the model by one step
         self.datacollector.collect(self)
         self.schedule.step()
+        
+        
+        # if self.schedule.steps == 5:
+        for agent in self.schedule.agents:
+            # Calculate the actual flood depth as a random number between 0.5 and 1.2 times the estimated flood depth
+            #agent.flood_depth_actual = random.uniform(0.5, 1.2) * agent.flood_depth_estimated
+            # calculate the actual flood damage given the actual flood depth
+            #agent.flood_damage_actual = calculate_basic_flood_damage(agent.flood_depth_actual)
+            
+            print(f"Household {agent.unique_id}: agent_metrics={agent.AM}")
+    
+    
+        
+    def run_model(self):
+        for i in range(6):
+            self.step()
+            
+
+        
