@@ -41,11 +41,26 @@ class AdaptationModel(Model):
                  # number of nearest neighbours for WS social network
                  number_of_nearest_neighbours = 5,
                  
+                 # Probability of flood occurence
+                 flood_probability = 0.2,
+                 
                 #intention action gap which ensures that only a certain percentage of households can implement a measure
-                intention_action_gap = 0.4,
+                intention_action_gap = 0.3,
+                low_threshold = 0.6, 
+                medium_threshold = 0.7,
+                high_threshold = 0.8,
                 
                 elevation_time = 4, #time steps
                 elevation_cost = 5000, # cost of implementing elevation
+                elevation_protection = 0.3, #inundation level in meters
+                
+                wet_proofing_time = 2, #time steps
+                wet_proofing_cost = 3000, # cost of implementing wet_proofing
+                wet_proofing_protection = 3, #inundation level in meters
+                
+                dry_proofing_time = 1, #time steps
+                dry_proofing_cost = 1500, # cost of implementing dry_proofing
+                dry_proofing_protection = 1, # inundation level in meters
                  ):
         
         super().__init__(seed = seed)
@@ -60,9 +75,22 @@ class AdaptationModel(Model):
         self.number_of_edges = number_of_edges
         self.number_of_nearest_neighbours = number_of_nearest_neighbours
         
+        self.flood_probability = flood_probability
+        
         self.intention_action_gap = intention_action_gap
         self.elevation_cost = elevation_cost
         self.elevation_time = elevation_time
+        self.elevation_protection = elevation_protection
+        self.wet_proofing_cost = wet_proofing_cost
+        self.wet_proofing_time = wet_proofing_time
+        self.wet_proofing_protection = wet_proofing_protection
+        self.dry_proofing_cost = dry_proofing_cost
+        self.dry_proofing_time = dry_proofing_time
+        self.dry_proofing_protection = dry_proofing_protection
+        
+        self.low_threshold = low_threshold
+        self.medium_threshold = medium_threshold
+        self.high_threshold = high_threshold
 
         # generating the graph according to the network used and the network parameters specified
         self.G = self.initialize_network()
@@ -195,25 +223,26 @@ class AdaptationModel(Model):
         estimated differently
         """
         
+        
+        if self.schedule.steps >= 5:
+            # Check if flood occurs
+            if random.random() <= self.flood_probability:
+                for agent in self.schedule.agents:
+                    # Calculate the actual flood depth as a random number between 0.5 and 1.2 times the estimated flood depth
+                    agent.flood_depth_actual = random.uniform(0.5, 1.2) * agent.flood_depth_estimated
+                    # calculate the actual flood damage given the actual flood depth
+                    agent.flood_damage_actual = calculate_basic_flood_damage(agent.flood_depth_actual)
+        
+        #print(f"Household {agent.unique_id}: agent_metrics={agent.AM}")
+    
         # Collect data and advance the model by one step
         self.datacollector.collect(self)
         self.schedule.step()
         
         
-        # if self.schedule.steps == 5:
-        for agent in self.schedule.agents:
-            # Calculate the actual flood depth as a random number between 0.5 and 1.2 times the estimated flood depth
-            #agent.flood_depth_actual = random.uniform(0.5, 1.2) * agent.flood_depth_estimated
-            # calculate the actual flood damage given the actual flood depth
-            #agent.flood_damage_actual = calculate_basic_flood_damage(agent.flood_depth_actual)
-            
-            print(f"Household {agent.unique_id}: agent_metrics={agent.AM}")
-    
-    
-        
-    def run_model(self):
-        for i in range(6):
-            self.step()
+    # def run_model(self):
+    #     for i in range(6):
+    #         self.step()
             
 
         

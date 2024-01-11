@@ -82,9 +82,10 @@ class Households(Agent):
         if self.detached == 1: #check if this household is detached
             if self.elevation == 1:
                 #Agent can choose to elevate house in this timestep
-                # DETERMINE COST_ELEVATION
                 if self.budget >= self.model.elevation_cost:
-                        print("Agent has sufficient budget for elevation, starts implementing here, budget=", self.budget)
+                    # print("Agent has sufficient budget for elevation, starts implementing here, budget=", self.budget)
+                    if random.random() >= 1 - self.model.intention_action_gap:
+                        # print('Intention and budget high enough for elevation')
                         self.elevation = 2
                         self.budget -= self.model.elevation_cost
                         self.elevation_time_counter = 1 #this tick counts as one unit of time for implementing elevation
@@ -92,7 +93,7 @@ class Households(Agent):
                 
             elif self.elevation == 2:
                 #Agent is implementing elevation
-                print('this agent is implementing elevation', self.elevation_time_counter)
+                #print('this agent is implementing elevation', self.elevation_time_counter)
                 if self.elevation_time_counter >= self.model.elevation_time:
                     self.elevation = 3
                 else:
@@ -100,40 +101,105 @@ class Households(Agent):
                     self.elevation_time_counter += 1
                 #Check if implementation time has been reached during this step
             
-            else:
+            #else:
                 # Agent has implemented elevation as a measure already
-                print("Elevation implementation complete")
-                
-
-    # def check_wet_proofing(self):
-    #     # check whether wet_proofing and elevation are not already implemented
-    #     if not self.wet_proofing and not self.check_elevation():
-    #         #DETERMINE COST_WET_PROOFING
-    #         if self.budget >= cost_wet_proofing:
-    #             self.wet_proofing = True
-    #             self.budget -= cost_wet_proofing
-    #             return True
-    #     return False
+                #print("Elevation implementation complete")
             
-    # def check_dry_proofing(self):
-    #     # check whether there are no measures implemented
-    #     if not self.dry_proofing and not self.check_elevation() and not self.check_wet_proofing():
-    #         #DETERMINE COST_DRY_PROOFING
-    #         if self.budget >= cost_dry_proofing:
-    #             self.dry_proofing = True
-    #             self.budget -= cost_dry_proofing
-    #             return True
-    #     return False
+    def check_wet_proofing(self):
+        if self.wet_proofing == 1:
+            #Agent can choose to implement wet_proofing in this timestep
+            if self.budget >= self.model.wet_proofing_cost:
+                #print("Agent has sufficient budget for wet_proofing, starts implementing here, budget=", self.budget)
+                if random.random() >= 1 - self.model.intention_action_gap:
+                    #print('Intention and budget high enough for wet_proofing')
+                    # print("Agent has sufficient budget for wet_proofing, starts implementing here, budget=", self.budget)
+                    self.wet_proofing = 2
+                    self.budget -= self.model.wet_proofing_cost
+                    self.wet_proofing_time_counter = 1 #this tick counts as one unit of time for implementing elevation
+            
+            
+        elif self.wet_proofing == 2:
+            #Agent is implementing wet_proofing
+            #print('this agent is implementing wet_proofing', self.wet_proofing_time_counter)
+            if self.wet_proofing_time_counter >= self.model.wet_proofing_time:
+                self.wet_proofing = 3
+            else:
+                #Implementation time has not been reached, advance counter by 1
+                self.wet_proofing_time_counter += 1
+            #Check if implementation time has been reached during this step
+        
+        #else:
+            # Agent has implemented wet_proofing as a measure already
+            #print("Wet_proofing implementation complete")
+                
+    def check_dry_proofing(self):
+        if self.dry_proofing == 1:
+            #Agent can choose to implement dry_proofing in this timestep
+            if self.budget >= self.model.dry_proofing_cost:
+                #print("Agent has sufficient budget for dry_proofing, starts implementing here, budget=", self.budget)
+                if random.random() >= 1 - self.model.intention_action_gap:
+                    #print('Intention and budget high enough for dry_proofing')
+                    self.dry_proofing = 2
+                    self.budget -= self.model.dry_proofing_cost
+                    self.dry_proofing_time_counter = 1 #this tick counts as one unit of time for implementing elevation
+            
+            
+        elif self.dry_proofing == 2:
+            #Agent is implementing dry_proofing
+            #print('this agent is implementing dry_proofing', self.dry_proofing_time_counter)
+            if self.dry_proofing_time_counter >= self.model.dry_proofing_time:
+                self.dry_proofing = 3
+            else:
+                #Implementation time has not been reached, advance counter by 1
+                self.dry_proofing_time_counter += 1
+            #Check if implementation time has been reached during this step
+        
+        #else:
+            # Agent has implemented dry_proofing as a measure already
+            #print("dry_proofing implementation complete")
         
     def choose_measure(self):
-        # DETERMINE THRESHOLD
-        # intention_action_gap = 0.3 #implement as model parameter
-        threshold = 1-self.model.intention_action_gap
-        if self.AM >= threshold:
-
-            self.check_elevation()
-            # self.check_wet_proofing()
-            # self.check_dry_proofing()
+        # Check if AM is higher than highest threshold possible
+        if self.AM >= self.model.high_threshold:
+            # Define available measures for highest threshold
+            available_measures = ['elevation', 'wet_proofing', 'dry_proofing']
+            # Check for all available measures in random order
+            while available_measures:
+                # Make random choice of available measures
+                choice = random.choice(available_measures)
+                # Remove measure from available measures
+                available_measures.remove(choice)
+                
+                # Call measure corresponding to choice
+                if choice == 'elevation':
+                    self.check_elevation()
+                elif choice == 'wet_proofing':
+                    self.check_wet_proofing()
+                else:
+                    self.check_dry_proofing()
+        
+        # Check if AM is higher than medium threshold
+        elif self.AM >= self.model.medium_threshold:
+            # Define available measures for medium threshold
+            available_measures = ['wet_proofing', 'dry_proofing']
+            # Check for all available measures in random order
+            while available_measures:
+                # Make random choice of available measures
+                choice = random.choice(available_measures)
+                # Remove measure from available measures
+                available_measures.remove(choice)
+                
+                # Call measure corresponding to choice
+                if choice == 'wet_proofing':
+                    self.check_wet_proofing()
+                else:
+                    self.check_dry_proofing()
+                
+        # Check if AM is higher than lowest threshold    
+        elif self.AM >= self.model.low_threshold:
+            # Only available measure is dry_proofing
+            self.check_dry_proofing()
+                
               
     # Function to count friends who can be influencial.
     def count_neighbors(self, radius):
@@ -145,10 +211,11 @@ class Households(Agent):
         self.determine_AM()
         self.choose_measure()
         
+        # GIVEN
         # Logic for adaptation based on estimated flood damage and a random chance.
         # These conditions are examples and should be refined for real-world applications.
-        if self.flood_damage_estimated > 0.15 and random.random() < 0.2:
-            self.is_adapted = True  # Agent adapts to flooding
+        # if self.flood_damage_estimated > 0.15 and random.random() < 0.2:
+        #     self.is_adapted = True  # Agent adapts to flooding
         
 # Define the Government agent class
 class Government(Agent):
