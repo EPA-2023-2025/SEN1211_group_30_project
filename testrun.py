@@ -20,7 +20,6 @@ from mesa.datacollection import DataCollector
 import geopandas as gpd
 import rasterio as rs
 import matplotlib.pyplot as plt
-
 # Import the agent class(es) from agents.py
 from agents import Households
 
@@ -32,7 +31,8 @@ from model import AdaptationModel
 
 m1 = AdaptationModel()
 
-for i in range(10):
+for i in range(1, 11):
+    print('WE ARE NOW AT STEP:', i)
     m1.step()
     
 agent_data = m1.datacollector.get_agent_vars_dataframe()

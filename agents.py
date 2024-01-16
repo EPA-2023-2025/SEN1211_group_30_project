@@ -36,12 +36,17 @@ class Households(Agent):
         self.wet_proofing = 1
         self.elevation = 1
         
-        self.prior_hazard_experience = 0 #cumulative sum of previous financial losses due to flood
+        self.undergone_measures = [0 for i in range(8)] # history of undergone measures during last eight steps
+        
+        self.financial_loss = 0 #cumulative sum of previous financial losses due to flood
+        
+        # history of floods during last 20 steps (5 years)
+        #self.prior_harard_experience = [0 for i in range(20)] # to use self.prior_harard_experience / (self.model.schedule.steps / 4)
         
         # self.protection_level -> maybe add later
         
         # self.damaged -> add later
-        
+        self.savings_income = random.randint(300, 700) #Assumption: Every agent gets a standard
         self.detached = random.choice([0, 1]) # 0 = not detached, 1 = detached
 
         # getting flood map values
@@ -89,13 +94,14 @@ class Households(Agent):
                         self.elevation = 2
                         self.budget -= self.model.elevation_cost
                         self.elevation_time_counter = 1 #this tick counts as one unit of time for implementing elevation
-                
+                        self.is_adapted = True
                 
             elif self.elevation == 2:
                 #Agent is implementing elevation
                 #print('this agent is implementing elevation', self.elevation_time_counter)
                 if self.elevation_time_counter >= self.model.elevation_time:
                     self.elevation = 3
+                    
                 else:
                     #Implementation time has not been reached, advance counter by 1
                     self.elevation_time_counter += 1
@@ -116,13 +122,14 @@ class Households(Agent):
                     self.wet_proofing = 2
                     self.budget -= self.model.wet_proofing_cost
                     self.wet_proofing_time_counter = 1 #this tick counts as one unit of time for implementing elevation
-            
+                    self.is_adapted = True
             
         elif self.wet_proofing == 2:
             #Agent is implementing wet_proofing
             #print('this agent is implementing wet_proofing', self.wet_proofing_time_counter)
             if self.wet_proofing_time_counter >= self.model.wet_proofing_time:
                 self.wet_proofing = 3
+                
             else:
                 #Implementation time has not been reached, advance counter by 1
                 self.wet_proofing_time_counter += 1
@@ -142,7 +149,7 @@ class Households(Agent):
                     self.dry_proofing = 2
                     self.budget -= self.model.dry_proofing_cost
                     self.dry_proofing_time_counter = 1 #this tick counts as one unit of time for implementing elevation
-            
+                    self.is_adapted = True
             
         elif self.dry_proofing == 2:
             #Agent is implementing dry_proofing
@@ -200,34 +207,60 @@ class Households(Agent):
             # Only available measure is dry_proofing
             self.check_dry_proofing()
        
+    def update_threat_appraisal(self):
+        # if self.flood_depth_estimated >= self.model.upper_threat_threshold:
+        #     self.threat_appraisal = 1.1 * self.threat_appraisal
+        # elif self.flood_depth_estimated <= self.model.lower_threat_threshold:
+        #     self.threat_appraisal = 0.9 * self.threat_appraisal
+        
+        # Needs to be dependent on government measures
+        if self.flood_depth_estimated >= random.uniform(0, 10):
+            self.threat_appraisal = 1.1 * self.threat_appraisal
+        else:
+            self.threat_appraisal = 0.9 * self.threat_appraisal
+        
+    def update_coping_appraisal(self):
+        if self.budget >= self.model.upper_budget_threshold:
+            self.coping_appraisal = 1.1 * self.coping_appraisal
+        elif self.budget <= self.model.lower_budget_threshold:
+            self.coping_appraisal = 0.9 * self.coping_appraisal 
+        # if self.budget >= random.random(1000,10000):
+        #     self.coping_appraisal = 1.1 * self.coping_appraisal
+        # else:
+        #     self.coping_appraisal = 0.9 * self.coping_appraisal
+       
+    def update_preceding_flood_engagement(self):
+        flood_recency = 1 - ((self.model.schedule.steps - self.model.last_flood) / 20)
+        if np.mean(self.undergone_measures) >= random.random():
+            # factor = sum(self.prior_hazard_experience) / (self.model.schedule.steps/4)
+            # if self.prior_hazard_experience >= random.random():
+            if self.model.last_flood != 0:
+                if flood_recency >= random.random():
+                    self.preceding_flood_engagement = self.preceding_flood_engagement * 1.1
+            else:
+                self.preceding_flood_engagement= self.preceding_flood_engagement * 1.05
+                
+        elif flood_recency >= random.random():
+                self.preceding_flood_engagement = self.preceding_flood_engagement * 1.05
+        else:
+            self.preceding_flood_engagement = 0.9 * self.preceding_flood_engagement
+        
+    def update_external_influence(self):
+        neighbors = self.model.grid.get_neighbors(self.pos)
+        #print('neighbors:', neighbors)
+        avg_neighbor_AM = np.mean([neighbor.AM for neighbor in neighbors])
+        #print('Avg neighbor AM:', avg_neighbor_AM)
+        # Calculate the external influence based on the difference between self.AM and neighbors AM
+        self.external_influence = self.external_influence * (1+(avg_neighbor_AM-self.AM))
     
-    #def update_threat_appraisal(self):
-        # Dependent on government measures
-        # dependent on estimated flood depth ?
-        # dependent on risk of flood ?
-        
-    # def update_coping_appraisal(self):
-    #     if self.budget >= threshold:
-    #         self.coping_appraisal = 1.1 * self.coping_appraisal()
-        
-    # def update_climate_related_beliefs(self):
-        
-    # def update_preceding_flood_engagement(self):
-        
-    # def update_external_influence(self):
-    #     neighbors = self.model.grid.get_neighborhood(self.pos, include_center=False, radius=radius)
-    #     # Determine the average AM of the neighbors
-    #     avg_neighbor_AM = np.mean([neighbor.AM for neigbor in neighbors])
-        
-    #     self.external_influence = self.external_influence + 
-    
-    # def update_AM():
-    #     # update_threat_appraisal(self)
-    #     update_coping_appraisal(self)
-    #     update_climate_related_beliefs(self)
-    #     update_preceding_flood_engagement(self)
-    #     update_external_influence(self)
-    #     self.determine_AM()
+    def update_AM(self):
+        print('id:', self.unique_id, 'am:', self.AM)
+        self.update_threat_appraisal()
+        self.update_coping_appraisal()
+        self.update_preceding_flood_engagement()
+        self.update_external_influence()
+        self.determine_AM()
+        print('id:', self.unique_id, 'am updated:', self.AM)
               
     # Function to count friends who can be influencial.
     def count_neighbors(self, radius):
@@ -236,9 +269,16 @@ class Households(Agent):
         return len(neighbors)
 
     def step(self):
+        self.is_adapted = False
         self.determine_AM()
         self.choose_measure()
-        # self.update_AM()
+        self.undergone_measures.pop(0)
+        if self.is_adapted:
+            self.undergone_measures.append(1)
+        else:
+            self.undergone_measures.append(0)
+        self.update_AM()
+        self.budget += self.savings_income
         
         # GIVEN
         # Logic for adaptation based on estimated flood damage and a random chance.

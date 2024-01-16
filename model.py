@@ -50,6 +50,12 @@ class AdaptationModel(Model):
                 medium_threshold = 0.7,
                 high_threshold = 0.8,
                 
+                upper_budget_threshold = 7000,
+                lower_budget_threshold = 3000,
+                
+                # upper_threat_threshold = 4,
+                # lower_threat_threshold = 1,
+                
                 elevation_time = 4, #time steps
                 elevation_cost = 5000, # cost of implementing elevation
                 elevation_protection = 0.3, #inundation level in meters
@@ -102,7 +108,15 @@ class AdaptationModel(Model):
         self.medium_threshold = medium_threshold
         self.high_threshold = high_threshold
         
+        self.upper_budget_threshold = upper_budget_threshold
+        self.lower_budget_threshold = lower_budget_threshold
+        
+        # self.upper_threat_threshold = upper_threat_threshold
+        # self.lower_threat_threshold = lower_threat_threshold
+        
         self.max_damage_costs = max_damage_costs
+        
+        self.last_flood = 0
 
         # generating the graph according to the network used and the network parameters specified
         self.G = self.initialize_network()
@@ -241,8 +255,11 @@ class AdaptationModel(Model):
             if random.random() <= self.flood_probability:
                 
                 print('A Flood occurs')
+                self.last_flood = self.schedule.steps
                 for agent in self.schedule.agents:
                     if agent.in_floodplain:
+                        #Agent experiences a food
+                        # agent.prior_hazard_experience.append(1)
                         # Calculate the actual flood depth as a random number between 0.5 and 1.2 times the estimated flood depth
                         agent.flood_depth_actual = random.uniform(0.5, 1.2) * agent.flood_depth_estimated
                         # calculate the actual flood damage given the actual flood depth
@@ -293,8 +310,14 @@ class AdaptationModel(Model):
                         agent.budget -= damage_costs
                         if agent.budget < 0:
                             agent.budget = 0
-                        
-        #print(f"Household {agent.unique_id}: agent_metrics={agent.AM}")
+        #             else:
+        #                 agent.prior_hazard_experience.pop(0)
+        #                 agent.prior_hazard_experience.append(0)
+        # #print(f"Household {agent.unique_id}: agent_metrics={agent.AM}")
+            # else:
+            #     for agent in self.schedule.agents:
+            #         agent.prior_hazard_experience.pop(0)
+            #         agent.prior_hazard_experience.append(0)
     
         # Collect data and advance the model by one step
         self.datacollector.collect(self)
