@@ -4,7 +4,8 @@ import random
 from mesa import Agent
 from shapely.geometry import Point
 from shapely import contains_xy
-
+#import RBB: 
+from rbb import *
 # Import functions from functions.py
 from functions import generate_random_location_within_map_domain, get_flood_depth, calculate_basic_flood_damage, floodplain_multipolygon
 
@@ -287,14 +288,17 @@ class Households(Agent):
         #     self.is_adapted = True  # Agent adapts to flooding
         
 # Define the Government agent class
-class Government(Agent):
+class Government(RBBGovernment):#inherit from RBBGovernment)
     """
     A government agent that currently doesn't perform any actions.
     """
-    def __init__(self, unique_id, model):
-        super().__init__(unique_id, model)
+    def __init__(self, unique_id, model, budget, structure, detector):
+        super().__init__(unique_id, model, budget, structure, detector)
+        
 
     def step(self):
+    #super from rbb
+    #nog 1 extra dingetje
         # The government agent doesn't perform any actions.
         pass
 

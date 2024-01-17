@@ -28,15 +28,15 @@ class GovernmentStructure(Enum):
     CENTRALISED = 1 #A centralised government : federal / state
     DECENTRALISED = 2 #states / regional
 
-class Government(Agent):
+class RBBGovernment(Agent):
     """
     A government agent that can make decisions on flood risk management 
     tools / strategies.
     """
     def __init__(
             self,
-            # unique_id,
-            # model,
+            unique_id,
+            model,
             budget,
             structure, 
             # effector, 
@@ -44,7 +44,7 @@ class Government(Agent):
             ):
         self = self
         
-        #super().__init__(unique_id, model)
+        super().__init__(unique_id, model)
         self.structure = GovernmentStructure
         # self.effector = OrganizationInstrument
         self.detector: int = detector
@@ -158,7 +158,7 @@ class OrganizationInstrument():
         self.protection_level: int = protection_level #level of protection: how much it will cover the floodplane
 
 
-government = Government(budget=8, detector = 1)
+government = RBBGovernment(structure = GovernmentStructure.CENTRALISED, budget=8, detector = 1)
 government.step()   
 # class Strategy():
 #     """ 
