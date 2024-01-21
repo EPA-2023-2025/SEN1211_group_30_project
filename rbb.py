@@ -38,7 +38,8 @@ class RBBGovernment():
             budget,
             structure, 
             # effector, 
-            detector: int #whether a government has a detector resource yes (1) or no (0). A detector resource is a survey. 
+            detector: int#whether a government has a detector resource yes (1) or no (0). A detector resource is a survey. 
+            
             ):
         self = self
         
@@ -47,6 +48,7 @@ class RBBGovernment():
         self.detector: int = detector
         self.budget:int = budget #budget is measured in x1000 dollar
         self.time_gov_proc = self.estimate_planning()
+        self.agenda = False
         
     def assess_risk(self, flood_probability: float, flood_impact: int): 
         """Assess the risk of a flooding"""
@@ -93,34 +95,35 @@ class RBBGovernment():
         print("Agenda: ", agenda)
         return agenda
     
+    def change_agenda(self):
+        if self.agenda:
+            self.agenda = False
+        return self.agenda
     
-    
-    def make_decision(self, agenda, timeframe, eng_infra_treshold, nat_infra_treshold):
+    def make_decision(self, timeframe, eng_infra_treshold, nat_infra_treshold):
         """Government makes a decision on what kind of tool to deploy"""
         #the tresholds are based on the idea that a government knows beforehand that a long term infrastructural project needs at least a certain amount of available budget, same for short term infrastructural projects. 
-        decision = {}
-        if agenda: #if a topic is on the agenda
+        
+        if self.agenda: #if a topic is on the agenda
             if self.time_gov_proc <= timeframe: #if the estimated timeframe is lower or equal to length of government procedures
                 if self.budget >= eng_infra_treshold: #if the budget is larger or equal to long term infrastructure budget
                  #add political influence here: are people against engineered projects? Then still choose nature based infrastructure
-                    decision = {'engineered_infra': 1,  #engineered infrastructure like levees and storm surge barriers
-                                'nature_based_infra': 0, #nature based infrastructure like dunes and wetlands
-                                'no_infra': 0} #no infra 
-                
+                    #ik heb het nu zo gedaan maar eigenlijk wil ik van te voren al twee objecten maken, EngineeredInfra en NatureBasedInfra, 
+                    # en deze objecten vervolgens aanpassen nadat een beslissing is gemaakt. Voornamelijk op de attribute 'status'
+                    decision = OrganizationInstrument(name = 'engineered_infra') #engineered infrastructure like levees and storm surge barriers
+                    print('Decision: ', decision.name)
+                    self.change_agenda()                 
                 elif self.budget > nat_infra_treshold:
-                    decision = {'engineered_infra': 0,
-                                'nature_based_infra': 1,
-                                'no_infra': 0}
+                    decision = OrganizationInstrument(name = 'nature_based_infra') #nature based infrastructure like dunes and wetlands
+                    print('Decision: ', decision.name)
+                    self.change_agenda()          
                 else:
-                    decision = {'engineered_infra': 0,
-                                'nature_based_infra': 0,
-                                'no_infra': 1}
-            
+                    decision = OrganizationInstrument(name = 'no_infra') #no infra
+                    print('Decision: ', decision.name)
+                    self.change_agenda()
         else:#if the duration of government procedures takes longer than the estimated timeframe:
-            decision = {'engineered_infra': 0,
-                        'nature_based_infra': 0,
-                        'no_infra': 1}
-        print(decision)
+            print('Flood measure decision not on agenda')
+
         return decision
     #if decision is made moet agenda weer false worden
     #decision aanpassen naar variabelen met 1 = not implemented, 2 = implementing, 3 = implemented-> security is dan 'full'
@@ -128,12 +131,18 @@ class RBBGovernment():
     def implement_decision(self):
         pass
     
+    def check_status(self):
+        if self.agenda: 
+            status = 'Flood measure decision is on agenda'
+        else: 
+            status = 'Flood measure decision is NOT on agenda'
+        return status   
+            
     def step(self):
-        pass
+        print('Status:', self.check_status() )
+        
 
 
-# government = RBBGovernment(structure=GovernmentStructure.CENTRALISED, budget=8, detector=1)    
-# government.step()
 class OrganizationInstrument():
     """ 
     An OrganizationInstrument represents a government's organisational
@@ -142,20 +151,42 @@ class OrganizationInstrument():
     def __init__(
         self, 
         name: str,
-        status: int, #1 = not implemented, 2 = implementing, 3 = implemented-> security is dan 'full'
-        cost: int, 
-        planning: int, #due to lengthy government procedures and construction times
-        protection_level: int
+        status: int = 1, #1 = not implemented, 2 = implementing, 3 = implemented-> security is dan 'full'
+        #cost: int = , 
+        planning: int = 5, #due to lengthy government procedures and construction times
+        protection_level: int = 5
         ):
         
         self.name: str = name
         self.status: int = status
-        self.cost: int = cost
+        #self.cost: int = cost
         self.planning: int = planning 
         self.protection_level: int = protection_level #level of protection: how much it will cover the floodplane
 
-
-
+    def impact_planning(self, structure, centralised_factor, decentralised_factor):
+        """Depending on a governments organisational structure, duration of project procedures
+        such as government approval differs. This method estimates the duration based on government structure. 
+        """
+        if self.structure == GovernmentStructure.CENTRALISED:
+            #increase planning with certain factor
+            self.planning = self.planning + centralised_factor
+            
+        elif self.structure == GovernmentStructure.DECENTRALISED:
+            #decrease planning with certain factor
+            self.planning = self.planning - decentralised_factor
+        else:
+            #planning stays the same
+            self.planning = self.planning
+            
+        return self.planning
+        
+    # def change_status(self, decision): 
+        
+        
+# class NatureBasedInfra(OrganizationInstrument):
+# class EngineeredInfra(OrganizationInstrument):    
+           
+            
 # class Strategy():
 #     """ 
 #     A Strategy object represents a set of tools that make up
