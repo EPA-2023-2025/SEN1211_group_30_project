@@ -28,15 +28,13 @@ class GovernmentStructure(Enum):
     CENTRALISED = 1 #A centralised government : federal / state
     DECENTRALISED = 2 #states / regional
 
-class RBBGovernment(Agent):
+class RBBGovernment():
     """
     A government agent that can make decisions on flood risk management 
     tools / strategies.
     """
     def __init__(
             self,
-            unique_id,
-            model,
             budget,
             structure, 
             # effector, 
@@ -44,11 +42,11 @@ class RBBGovernment(Agent):
             ):
         self = self
         
-        super().__init__(unique_id, model)
         self.structure = GovernmentStructure
         # self.effector = OrganizationInstrument
         self.detector: int = detector
         self.budget:int = budget #budget is measured in x1000 dollar
+        self.time_gov_proc = self.estimate_planning()
         
     def assess_risk(self, flood_probability: float, flood_impact: int): 
         """Assess the risk of a flooding"""
@@ -74,9 +72,9 @@ class RBBGovernment(Agent):
         such as government approval differs. This method estimates the duration based on government structure. 
         """
         if self.structure == GovernmentStructure.CENTRALISED:
-            self.time_gov_proc = 2 #lengthy
+            self.time_gov_proc = 4 #lengthy
         elif self.structure == GovernmentStructure.DECENTRALISED:
-            self.time_gov_proc = 4 #fast
+            self.time_gov_proc = 2 #fast
         else:
             self.time_gov_proc = 3 #average
         return self.time_gov_proc
@@ -127,16 +125,15 @@ class RBBGovernment(Agent):
     #if decision is made moet agenda weer false worden
     #decision aanpassen naar variabelen met 1 = not implemented, 2 = implementing, 3 = implemented-> security is dan 'full'
     
-    #def implementation, returns an organizationInstrument object 
+    def implement_decision(self):
+        pass
     
     def step(self):
-        flood_risk = self.assess_risk(flood_probability, flood_impact) #take flood probability and flood impact from model
-        public_concern = self.take_survey(public_concern_metric)
-        agenda = self.put_on_agenda(flood_risk, public_concern, flood_risk_treshold, public_concern_treshold)
-        self.make_decision(agenda, eng_infra_treshold,nat_infra_treshold)
+        pass
 
 
-    
+# government = RBBGovernment(structure=GovernmentStructure.CENTRALISED, budget=8, detector=1)    
+# government.step()
 class OrganizationInstrument():
     """ 
     An OrganizationInstrument represents a government's organisational
@@ -158,8 +155,7 @@ class OrganizationInstrument():
         self.protection_level: int = protection_level #level of protection: how much it will cover the floodplane
 
 
-government = RBBGovernment(structure = GovernmentStructure.CENTRALISED, budget=8, detector = 1)
-government.step()   
+
 # class Strategy():
 #     """ 
 #     A Strategy object represents a set of tools that make up
