@@ -147,10 +147,10 @@ class AdaptationModel(Model):
             self.schedule.add(household)
             self.grid.place_agent(agent=household, node_id=node)
 
-        # You might want to create other agents here, e.g. insurance agents.
+        
         #create government agent
-        government = Government(unique_id = 0, model=self,structure=GovernmentStructure.CENTRALISED, budget=8, detector=1)
-        self.schedule.add(Government)
+        government = Government(unique_id=0, model=self,structure=GovernmentStructure.CENTRALISED, budget=8, detector=1)
+        self.schedule.add(government)
         # Data collection setup to collect data
         model_metrics = {
                         "total_adapted_households": self.total_adapted_households,
@@ -158,18 +158,18 @@ class AdaptationModel(Model):
                         }
         
         agent_metrics = {
-                        "FloodDepthEstimated": "flood_depth_estimated",
-                        "FloodDamageEstimated" : "flood_damage_estimated",
-                        "FloodDepthActual": "flood_depth_actual",
-                        "FloodDamageActual" : "flood_damage_actual",
-                        "IsAdapted": "is_adapted",
-                        "NeighborsCount": lambda a: a.count_neighbors(radius=1),
-                        "location":"location",
-                        "Adaptation_Motivation": lambda a: a.determine_AM()
-                        # ... other reporters ...
+                        # "FloodDepthEstimated": "flood_depth_estimated",
+                        # "FloodDamageEstimated" : "flood_damage_estimated",
+                        # "FloodDepthActual": "flood_depth_actual",
+                        # "FloodDamageActual" : "flood_damage_actual",
+                        # "IsAdapted": "is_adapted",
+                        # #"NeighborsCount": lambda a: a.count_neighbors(radius=1),
+                        # "location":"location",
+                        # #"Adaptation_Motivation": lambda a: a.determine_AM()
+                        # # ... other reporters ...
                         }
         #set up the data collector 
-        self.datacollector = DataCollector(model_reporters=model_metrics, agent_reporters=agent_metrics)
+        self.datacollector = DataCollector(model_reporters=model_metrics) #, agent_reporters=agent_metrics)
             
 
     def initialize_network(self):
@@ -271,7 +271,7 @@ class AdaptationModel(Model):
                 print('A Flood occurs')
                 self.last_flood = self.schedule.steps
                 for agent in self.schedule.agents:
-                    if agent.unique_id != 0:
+                    if agent.unique_id != 0: #if the agent in the scheduler is not the government
                         if agent.in_floodplain:
                             #Agent experiences a food
                             # agent.prior_hazard_experience.append(1)
