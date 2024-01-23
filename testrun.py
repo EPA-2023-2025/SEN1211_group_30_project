@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan  9 11:46:28 2024
+Created on Thu Jan 18 09:06:32 2024
 
-@author: simon
+@author: nelen
 """
 import numpy as np
 # import np.random
@@ -22,6 +22,7 @@ import rasterio as rs
 import matplotlib.pyplot as plt
 # Import the agent class(es) from agents.py
 from agents import Households
+from agents import Government
 
 # Import functions from functions.py
 from functions import get_flood_map_data, calculate_basic_flood_damage
@@ -31,14 +32,13 @@ from model import AdaptationModel
 
 m1 = AdaptationModel()
 
-for i in range(1, 11):
+for i in range(1, 3):
     print('WE ARE NOW AT STEP:', i)
     m1.step()
     
-agent_data = m1.datacollector.get_agent_vars_dataframe()
+#agent_data = m1.datacollector.get_agent_vars_dataframe()
 model_data = m1.datacollector.get_model_vars_dataframe()
 
 #agent_data.head()
 #model_data.head()
-
 

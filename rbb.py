@@ -86,14 +86,14 @@ class RBBGovernment():
         """Government decides to put flood risk management on agenda, based on risk and public concern"""
         #eventueel toevoegen: extreme weather events / experience
         if flood_risk > flood_risk_treshold:
-            agenda = True
+            self.agenda = True
         else:
             if public_concern > public_concern_treshold: 
-                agenda = True
+                self.agenda = True
             else:
-                agenda = False
-        print("Agenda: ", agenda)
-        return agenda
+                self.agenda = False
+        print("Agenda: ", self.agenda)
+        return self.agenda
     
     def change_agenda(self):
         if self.agenda:
@@ -160,18 +160,19 @@ class OrganizationInstrument():
         self.name: str = name
         self.status: int = status
         #self.cost: int = cost
-        self.planning: int = planning 
+        self.planning: int = planning
+        #time counter per step laten toevoegen, als gelijk aan planning dan status = 2
         self.protection_level: int = protection_level #level of protection: how much it will cover the floodplane
 
     def impact_planning(self, structure, centralised_factor, decentralised_factor):
         """Depending on a governments organisational structure, duration of project procedures
         such as government approval differs. This method estimates the duration based on government structure. 
         """
-        if self.structure == GovernmentStructure.CENTRALISED:
+        if structure == GovernmentStructure.CENTRALISED:
             #increase planning with certain factor
             self.planning = self.planning + centralised_factor
             
-        elif self.structure == GovernmentStructure.DECENTRALISED:
+        elif structure == GovernmentStructure.DECENTRALISED:
             #decrease planning with certain factor
             self.planning = self.planning - decentralised_factor
         else:
@@ -179,7 +180,6 @@ class OrganizationInstrument():
             self.planning = self.planning
             
         return self.planning
-        
     # def change_status(self, decision): 
         
         

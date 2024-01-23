@@ -55,6 +55,8 @@ class AdaptationModel(Model):
                  
                  # Probability of flood occurence
                  flood_probability = 0.4,
+                 #severity of flood
+                 
                  
                 #intention action gap which ensures that only a certain percentage of households can implement a measure
                 intention_action_gap = 0.3,

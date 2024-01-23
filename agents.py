@@ -5,9 +5,23 @@ from mesa import Agent
 from shapely.geometry import Point
 from shapely import contains_xy
 #import RBB: 
-from rbb import *
+from rbb import RBBGovernment
+from rbb import OrganizationInstrument
 # Import functions from functions.py
 from functions import generate_random_location_within_map_domain, get_flood_depth, calculate_basic_flood_damage, floodplain_multipolygon
+
+#should be imported from model:
+flood_probability = 0.1
+flood_impact = 9 #int [1-10]
+public_concern_metric = 1 #public concern metric should be a likert scale like distribution 1-5
+
+#could be defined in initialisation
+flood_risk_treshold = 0.3
+public_concern_treshold = 3
+eng_infra_treshold = 5
+nat_infra_treshold = 3
+timeframe = 5 #(1-flood_prob) * max_time
+
 
 
 # Define the Households agent class
@@ -73,10 +87,11 @@ class Households(Agent):
 
         # Add an attribute for the actual flood depth. This is set to zero at the beginning of the simulation since there is not flood yet
         # and will update its value when there is a shock (i.e., actual flood). Shock happens at some point during the simulation
-        self.flood_depth_actual = 0
+        #self.flood_depth_actual = 0
         
         #calculate the actual flood damage given the actual flood depth. Flood damage is a factor between 0 and 1
-        self.flood_damage_actual = calculate_basic_flood_damage(flood_depth=self.flood_depth_actual)
+        #self.flood_damage_actual = calculate_basic_flood_damage(flood_depth=self.flood_depth_actual)
+        self.AM = self.determine_AM()
     
     def determine_AM(self):
         self.AM = np.mean([self.background, self.threat_appraisal, 
@@ -216,6 +231,7 @@ class Households(Agent):
         
         # Needs to be dependent on government measures
         if self.flood_depth_estimated >= random.uniform(0, 10):
+            #estimated flood damage kan 
             self.threat_appraisal = 1.1 * self.threat_appraisal
         else:
             self.threat_appraisal = 0.9 * self.threat_appraisal
@@ -288,18 +304,49 @@ class Households(Agent):
         #     self.is_adapted = True  # Agent adapts to flooding
         
 # Define the Government agent class
-class Government(RBBGovernment):#inherit from RBBGovernment)
+class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
     """
-    A government agent that currently doesn't perform any actions.
+    A government agent that can make an infrastructural decision.
     """
     def __init__(self, unique_id, model, budget, structure, detector):
-        super().__init__(unique_id, model, budget, structure, detector)
+        #call the constructors of both parent classes
+        Agent.__init__(self, unique_id, model)
+        RBBGovernment.__init__(self, budget, structure, detector)
+        self.time_gov_proc = self.estimate_planning()
+        self.agenda = False
+        
+    def make_decision(self, timeframe, eng_infra_treshold, nat_infra_treshold):
+        """Government makes a decision on what kind of tool to deploy"""
+        #the tresholds are based on the idea that a government knows beforehand that a long term infrastructural project needs at least a certain amount of available budget, same for short term infrastructural projects. 
+        
+        if self.agenda: #if a topic is on the agenda
+            if self.time_gov_proc <= timeframe: #if the estimated timeframe is lower or equal to length of government procedures
+                if self.budget >= eng_infra_treshold: #if the budget is larger or equal to long term infrastructure budget
+                 #add political influence here: are people against engineered projects? Then still choose nature based infrastructure
+                    #ik heb het nu zo gedaan maar eigenlijk wil ik van te voren al twee objecten maken, EngineeredInfra en NatureBasedInfra, 
+                    # en deze objecten vervolgens aanpassen nadat een beslissing is gemaakt. Voornamelijk op de attribute 'status'
+                    decision = OrganizationInstrument(name = 'engineered_infra', protection_level = 9) #engineered infrastructure like levees and storm surge barriers
+                    print('Decision: ', decision.name)
+                    self.change_agenda()                 
+                elif self.budget > nat_infra_treshold:
+                    decision = OrganizationInstrument(name = 'nature_based_infra', protection_level = 5) #nature based infrastructure like dunes and wetlands
+                    print('Decision: ', decision.name)
+                    self.change_agenda()          
+                else:
+                    decision = OrganizationInstrument(name = 'no_infra') #no infra
+                    print('Decision: ', decision.name)
+                    self.change_agenda()
+        else:#if the duration of government procedures takes longer than the estimated timeframe:
+            print('Flood measure decision not on agenda')
+
+        return decision
+    
+    def step(self):
+        RBBGovernment.step(self)
+        #if a decision has been made in the previous step, this doesnt have to happen anymore
+        flood_risk = self.assess_risk(flood_probability, flood_impact) #take flood probability and flood impact from model
+        public_concern = self.take_survey(public_concern_metric)
+        self.put_on_agenda(flood_risk, public_concern, flood_risk_treshold, public_concern_treshold)
+        self.make_decision(timeframe, eng_infra_treshold, nat_infra_treshold)
         
 
-    def step(self):
-    #super from rbb
-    #nog 1 extra dingetje
-        # The government agent doesn't perform any actions.
-        pass
-
-# More agent classes can be added here, e.g. for insurance agents.
