@@ -109,23 +109,12 @@ class Households(Agent):
                         # print('Intention and budget high enough for elevation')
                         self.elevation = 2
                         self.budget -= self.model.elevation_cost
-                        self.elevation_time_counter = 1 #this tick counts as one unit of time for implementing elevation
+                        self.elevation_time_counter = 0 #initialize time_counter to 0, time_counter will be increased by 1 later in the step function
                         self.is_adapted = True
                 
-            elif self.elevation == 2:
-                #Agent is implementing elevation
-                #print('this agent is implementing elevation', self.elevation_time_counter)
-                if self.elevation_time_counter >= self.model.elevation_time:
-                    self.elevation = 3
-                    
-                else:
-                    #Implementation time has not been reached, advance counter by 1
-                    self.elevation_time_counter += 1
-                #Check if implementation time has been reached during this step
-            
             else:
-                # Agent has implemented elevation as a measure already
-                print("Elevation implementation complete")
+                # Agent has implemented elevation or is implementing elevation
+                print("Elevation cannot be implemented")
             
     def check_wet_proofing(self):
         if self.wet_proofing == 1:
@@ -139,21 +128,10 @@ class Households(Agent):
                     self.budget -= self.model.wet_proofing_cost
                     self.wet_proofing_time_counter = 1 #this tick counts as one unit of time for implementing elevation
                     self.is_adapted = True
-            
-        elif self.wet_proofing == 2:
-            #Agent is implementing wet_proofing
-            #print('this agent is implementing wet_proofing', self.wet_proofing_time_counter)
-            if self.wet_proofing_time_counter >= self.model.wet_proofing_time:
-                self.wet_proofing = 3
-                
-            else:
-                #Implementation time has not been reached, advance counter by 1
-                self.wet_proofing_time_counter += 1
-            #Check if implementation time has been reached during this step
         
         else:
-            # Agent has implemented wet_proofing as a measure already
-            print("Wet_proofing implementation complete")
+            # Agent has implemented or is implementing wet_proofing as a measure already
+            print("Wet_proofing cannot be implemented")
                 
     def check_dry_proofing(self):
         if self.dry_proofing == 1:
@@ -166,20 +144,10 @@ class Households(Agent):
                     self.budget -= self.model.dry_proofing_cost
                     self.dry_proofing_time_counter = 1 #this tick counts as one unit of time for implementing elevation
                     self.is_adapted = True
-            
-        elif self.dry_proofing == 2:
-            #Agent is implementing dry_proofing
-            #print('this agent is implementing dry_proofing', self.dry_proofing_time_counter)
-            if self.dry_proofing_time_counter >= self.model.dry_proofing_time:
-                self.dry_proofing = 3
-            else:
-                #Implementation time has not been reached, advance counter by 1
-                self.dry_proofing_time_counter += 1
-            #Check if implementation time has been reached during this step
         
         else:
-            # Agent has implemented dry_proofing as a measure already
-            print("dry_proofing implementation complete")
+            # Agent has implemented or is implementing dry_proofing as a measure already
+            print("Dry proofing cannot be implemented")
         
     def choose_measure(self):
         # Check if AM is higher than highest threshold possible
@@ -222,6 +190,34 @@ class Households(Agent):
         elif self.AM >= self.model.low_threshold:
             # Only available measure is dry_proofing
             self.check_dry_proofing()
+            
+    def update_measure_implementation(self):
+        if self.elevation == 2:
+            #Agent is implementing elevation
+                if self.elevation_time_counter >= self.model.elevation_time:
+                    self.elevation = 3
+                    
+                else:
+                    #Implementation time has not been reached, advance counter by 1
+                    self.elevation_time_counter += 1
+                    
+        if self.wet_proofing == 2:
+            #Agent is implementing wet_proofing
+                if self.wet_proofing_time_counter >= self.model.wet_proofing_time:
+                    self.wet_proofing = 3
+                    
+                else:
+                    #Implementation time has not been reached, advance counter by 1
+                    self.wet_proofing_time_counter += 1
+                    
+        if self.dry_proofing == 2:
+            #Agent is implementing dry_proofing
+                if self.dry_proofing_time_counter >= self.model.dry_proofing_time:
+                    self.dry_proofing = 3
+                    
+                else:
+                    #Implementation time has not been reached, advance counter by 1
+                    self.dry_proofing_time_counter += 1
        
     def update_threat_appraisal(self):
         # if self.flood_depth_estimated >= self.model.upper_threat_threshold:
@@ -280,15 +276,16 @@ class Households(Agent):
         print('id:', self.unique_id, 'am updated:', self.AM)
               
     # Function to count friends who can be influencial.
-    def count_neighbors(self, radius):
-        """Count the number of neighbors within a given radius (number of edges away). This is social relation and not spatial"""
-        neighbors = self.model.grid.get_neighborhood(self.pos, include_center=False, radius=radius)
-        return len(neighbors)
+    # def count_neighbors(self, radius):
+    #     """Count the number of neighbors within a given radius (number of edges away). This is social relation and not spatial"""
+    #     neighbors = self.model.grid.get_neighborhood(self.pos, include_center=False, radius=radius)
+    #     return len(neighbors)
 
     def step(self):
         self.is_adapted = False
         self.determine_AM()
         self.choose_measure()
+        self.update_measure_implementation()
         self.undergone_measures.pop(0)
         if self.is_adapted:
             self.undergone_measures.append(1)
