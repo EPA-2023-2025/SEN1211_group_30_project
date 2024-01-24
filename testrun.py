@@ -32,7 +32,7 @@ from model import AdaptationModel
 
 m1 = AdaptationModel()
 
-for i in range(1, 3):
+for i in range(1, 8):
     print('WE ARE NOW AT STEP:', i)
     m1.step()
     

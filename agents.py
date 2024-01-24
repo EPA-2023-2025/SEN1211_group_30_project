@@ -16,12 +16,12 @@ flood_impact = 9 #int [1-10]
 public_concern_metric = 1 #public concern metric should be a likert scale like distribution 1-5
 
 #could be defined in initialisation
-flood_risk_treshold = 0.3
+flood_risk_treshold = 2
 public_concern_treshold = 3
-eng_infra_treshold = 5
-nat_infra_treshold = 3
-timeframe = 5 #(1-flood_prob) * max_time
 
+dyke = OrganizationInstrument(name = 'Dyke', cost = 8, planning = 16, protection_level = 8, status = 1)
+wetland = OrganizationInstrument(name = 'Wetland', cost = 5,  planning = 10, protection_level = 5, status = 1)  
+options_list = [dyke, wetland]
 
 
 # Define the Households agent class
@@ -109,12 +109,23 @@ class Households(Agent):
                         # print('Intention and budget high enough for elevation')
                         self.elevation = 2
                         self.budget -= self.model.elevation_cost
-                        self.elevation_time_counter = 0 #initialize time_counter to 0, time_counter will be increased by 1 later in the step function
+                        self.elevation_time_counter = 1 #this tick counts as one unit of time for implementing elevation
                         self.is_adapted = True
                 
+            elif self.elevation == 2:
+                #Agent is implementing elevation
+                #print('this agent is implementing elevation', self.elevation_time_counter)
+                if self.elevation_time_counter >= self.model.elevation_time:
+                    self.elevation = 3
+                    
+                else:
+                    #Implementation time has not been reached, advance counter by 1
+                    self.elevation_time_counter += 1
+                #Check if implementation time has been reached during this step
+            
             else:
-                # Agent has implemented elevation or is implementing elevation
-                print("Elevation cannot be implemented")
+                # Agent has implemented elevation as a measure already
+                print("Elevation implementation complete")
             
     def check_wet_proofing(self):
         if self.wet_proofing == 1:
@@ -128,10 +139,21 @@ class Households(Agent):
                     self.budget -= self.model.wet_proofing_cost
                     self.wet_proofing_time_counter = 1 #this tick counts as one unit of time for implementing elevation
                     self.is_adapted = True
+            
+        elif self.wet_proofing == 2:
+            #Agent is implementing wet_proofing
+            #print('this agent is implementing wet_proofing', self.wet_proofing_time_counter)
+            if self.wet_proofing_time_counter >= self.model.wet_proofing_time:
+                self.wet_proofing = 3
+                
+            else:
+                #Implementation time has not been reached, advance counter by 1
+                self.wet_proofing_time_counter += 1
+            #Check if implementation time has been reached during this step
         
         else:
-            # Agent has implemented or is implementing wet_proofing as a measure already
-            print("Wet_proofing cannot be implemented")
+            # Agent has implemented wet_proofing as a measure already
+            print("Wet_proofing implementation complete")
                 
     def check_dry_proofing(self):
         if self.dry_proofing == 1:
@@ -144,10 +166,20 @@ class Households(Agent):
                     self.budget -= self.model.dry_proofing_cost
                     self.dry_proofing_time_counter = 1 #this tick counts as one unit of time for implementing elevation
                     self.is_adapted = True
+            
+        elif self.dry_proofing == 2:
+            #Agent is implementing dry_proofing
+            #print('this agent is implementing dry_proofing', self.dry_proofing_time_counter)
+            if self.dry_proofing_time_counter >= self.model.dry_proofing_time:
+                self.dry_proofing = 3
+            else:
+                #Implementation time has not been reached, advance counter by 1
+                self.dry_proofing_time_counter += 1
+            #Check if implementation time has been reached during this step
         
         else:
-            # Agent has implemented or is implementing dry_proofing as a measure already
-            print("Dry proofing cannot be implemented")
+            # Agent has implemented dry_proofing as a measure already
+            print("dry_proofing implementation complete")
         
     def choose_measure(self):
         # Check if AM is higher than highest threshold possible
@@ -190,34 +222,6 @@ class Households(Agent):
         elif self.AM >= self.model.low_threshold:
             # Only available measure is dry_proofing
             self.check_dry_proofing()
-            
-    def update_measure_implementation(self):
-        if self.elevation == 2:
-            #Agent is implementing elevation
-                if self.elevation_time_counter >= self.model.elevation_time:
-                    self.elevation = 3
-                    
-                else:
-                    #Implementation time has not been reached, advance counter by 1
-                    self.elevation_time_counter += 1
-                    
-        if self.wet_proofing == 2:
-            #Agent is implementing wet_proofing
-                if self.wet_proofing_time_counter >= self.model.wet_proofing_time:
-                    self.wet_proofing = 3
-                    
-                else:
-                    #Implementation time has not been reached, advance counter by 1
-                    self.wet_proofing_time_counter += 1
-                    
-        if self.dry_proofing == 2:
-            #Agent is implementing dry_proofing
-                if self.dry_proofing_time_counter >= self.model.dry_proofing_time:
-                    self.dry_proofing = 3
-                    
-                else:
-                    #Implementation time has not been reached, advance counter by 1
-                    self.dry_proofing_time_counter += 1
        
     def update_threat_appraisal(self):
         # if self.flood_depth_estimated >= self.model.upper_threat_threshold:
@@ -276,16 +280,15 @@ class Households(Agent):
         print('id:', self.unique_id, 'am updated:', self.AM)
               
     # Function to count friends who can be influencial.
-    # def count_neighbors(self, radius):
-    #     """Count the number of neighbors within a given radius (number of edges away). This is social relation and not spatial"""
-    #     neighbors = self.model.grid.get_neighborhood(self.pos, include_center=False, radius=radius)
-    #     return len(neighbors)
+    def count_neighbors(self, radius):
+        """Count the number of neighbors within a given radius (number of edges away). This is social relation and not spatial"""
+        neighbors = self.model.grid.get_neighborhood(self.pos, include_center=False, radius=radius)
+        return len(neighbors)
 
     def step(self):
         self.is_adapted = False
         self.determine_AM()
         self.choose_measure()
-        self.update_measure_implementation()
         self.undergone_measures.pop(0)
         if self.is_adapted:
             self.undergone_measures.append(1)
@@ -305,45 +308,64 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
     """
     A government agent that can make an infrastructural decision.
     """
-    def __init__(self, unique_id, model, budget, structure, detector):
+    def __init__(self, unique_id, model,structure, detector):
         #call the constructors of both parent classes
         Agent.__init__(self, unique_id, model)
-        RBBGovernment.__init__(self, budget, structure, detector)
-        self.time_gov_proc = self.estimate_planning()
+        RBBGovernment.__init__(self, structure, detector)
+        self.estimated_flood_impact = 3
         self.agenda = False
         
-    def make_decision(self, timeframe, eng_infra_treshold, nat_infra_treshold):
-        """Government makes a decision on what kind of tool to deploy"""
-        #the tresholds are based on the idea that a government knows beforehand that a long term infrastructural project needs at least a certain amount of available budget, same for short term infrastructural projects. 
+    def estimate_impact(self, damage_treshold):
+        """A government estimates the impact of a potential flood, 
+        based on the damage from the previous flood"""
+        if self.model.avg_flood_damage >= damage_treshold:
+            self.estimated_flood_impact = random.randrange(7,10)
+        else:
+            self.estimated_flood_impact = random.randrange(1,7)
+        return self.estimated_flood_impact
         
-        if self.agenda: #if a topic is on the agenda
-            if self.time_gov_proc <= timeframe: #if the estimated timeframe is lower or equal to length of government procedures
-                if self.budget >= eng_infra_treshold: #if the budget is larger or equal to long term infrastructure budget
-                 #add political influence here: are people against engineered projects? Then still choose nature based infrastructure
-                    #ik heb het nu zo gedaan maar eigenlijk wil ik van te voren al twee objecten maken, EngineeredInfra en NatureBasedInfra, 
-                    # en deze objecten vervolgens aanpassen nadat een beslissing is gemaakt. Voornamelijk op de attribute 'status'
-                    decision = OrganizationInstrument(name = 'engineered_infra', protection_level = 9) #engineered infrastructure like levees and storm surge barriers
-                    print('Decision: ', decision.name)
-                    self.change_agenda()                 
-                elif self.budget > nat_infra_treshold:
-                    decision = OrganizationInstrument(name = 'nature_based_infra', protection_level = 5) #nature based infrastructure like dunes and wetlands
-                    print('Decision: ', decision.name)
-                    self.change_agenda()          
-                else:
-                    decision = OrganizationInstrument(name = 'no_infra') #no infra
-                    print('Decision: ', decision.name)
-                    self.change_agenda()
-        else:#if the duration of government procedures takes longer than the estimated timeframe:
-            print('Flood measure decision not on agenda')
+               
+    def make_decision(self, flood_risk, options_list, high, low):
+        """Government makes a decision on what kind of tool to deploy"""
+        
+        #First, the topic needs to be on the agenda:
 
+        if self.agenda:#if a topic is on the agenda
+    
+            if flood_risk >= high:
+                # if the estimated risk is high, government will prioritise avg implementation time
+                lowest_planning = min([option.planning for option in options_list])
+                decision = [option for option in options_list if option.planning == lowest_planning][0]
+            elif low<=flood_risk< high:
+                # if the estimated risk is medium, government will prioritise protection level
+                highest_protection = max([option.protection_level for option in options_list])
+                decision = [option for option in options_list if option.planning == highest_protection][0]
+            elif flood_risk < low:
+                lowest_cost = min([option.cost for option in options_list])
+                decision = [option for option in options_list if option.planning == lowest_cost][0]
+                
+                # if the estimated risk is low, government will prioritise cost 
+                # based on the organisation of the government, the implementation time of the option will change.
+            decision.impact_planning(self.structure)
+            #change the status of the measure to ' implementing'
+            decision.status = 2
+            print('Decision:', decision.name)
+            #change agenda back to False
+            self.agenda = False
+            
+                
+        else:#if the topic was not on the agenda
+            print('Flood measure decision not on agenda')
+            decision = None
         return decision
     
     def step(self):
         RBBGovernment.step(self)
         #if a decision has been made in the previous step, this doesnt have to happen anymore
-        flood_risk = self.assess_risk(flood_probability, flood_impact) #take flood probability and flood impact from model
+        self.estimate_impact(damage_treshold = 0.4)
+        flood_risk = self.assess_risk(self.model.flood_probability, self.estimated_flood_impact) #take flood probability and flood impact from model
         public_concern = self.take_survey(public_concern_metric)
         self.put_on_agenda(flood_risk, public_concern, flood_risk_treshold, public_concern_treshold)
-        self.make_decision(timeframe, eng_infra_treshold, nat_infra_treshold)
+        self.make_decision(flood_risk, options_list, high=0.8, low=0.4)
         
 

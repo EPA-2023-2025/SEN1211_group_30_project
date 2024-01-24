@@ -10,7 +10,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 #import the RBB
-from rbb import*
+from rbb import OrganizationInstrument
+from rbb import RBBGovernment
+from rbb import GovernmentStructure 
+
 # Import the agent class(es) from agents.py
 from agents import Households
 from agents import Government
@@ -18,17 +21,13 @@ from agents import Government
 from functions import get_flood_map_data, calculate_basic_flood_damage
 from functions import map_domain_gdf, floodplain_gdf
 
-#should be imported from model:
-flood_probability = 0.1 #float 0-1
-flood_impact = 9 #int [1-10]
+
 public_concern_metric = 1 #public concern metric should be a likert scale like distribution 1-5
 
 #could be defined in initialisation
 flood_risk_treshold = 0.3
 public_concern_treshold = 3
-eng_infra_treshold = 5
-nat_infra_treshold = 3
-timeframe = 5 #(1-flood_prob) * max_time
+
 
 # Define the AdaptationModel class
 class AdaptationModel(Model):
@@ -54,9 +53,9 @@ class AdaptationModel(Model):
                  number_of_nearest_neighbours = 5,
                  
                  # Probability of flood occurence
-                 flood_probability = 0.4,
+                 flood_probability = 1,
                  #severity of flood
-                 
+                 flood_impact = 4,
                  
                 #intention action gap which ensures that only a certain percentage of households can implement a measure
                 intention_action_gap = 0.3,
@@ -129,7 +128,7 @@ class AdaptationModel(Model):
         # self.lower_threat_threshold = lower_threat_threshold
         
         self.max_damage_costs = max_damage_costs
-        
+        self.avg_flood_damage = 0
         self.last_flood = 0
 
         # generating the graph according to the network used and the network parameters specified
@@ -151,7 +150,7 @@ class AdaptationModel(Model):
 
         
         #create government agent
-        government = Government(unique_id=0, model=self,structure=GovernmentStructure.CENTRALISED, budget=8, detector=1)
+        government = Government(unique_id=0, model=self,structure=GovernmentStructure.CENTRALISED, detector=1)
         self.schedule.add(government)
         # Data collection setup to collect data
         model_metrics = {
@@ -159,7 +158,7 @@ class AdaptationModel(Model):
                         # ... other reporters ...
                         }
         
-        agent_metrics = {
+        #agent_metrics = {
                         # "FloodDepthEstimated": "flood_depth_estimated",
                         # "FloodDamageEstimated" : "flood_damage_estimated",
                         # "FloodDepthActual": "flood_depth_actual",
@@ -169,7 +168,7 @@ class AdaptationModel(Model):
                         # "location":"location",
                         # #"Adaptation_Motivation": lambda a: a.determine_AM()
                         # # ... other reporters ...
-                        }
+                        #}
         #set up the data collector 
         self.datacollector = DataCollector(model_reporters=model_metrics) #, agent_reporters=agent_metrics)
             
@@ -269,7 +268,7 @@ class AdaptationModel(Model):
         if self.schedule.steps >= 5:
             # Check if flood occurs
             if random.random() <= self.flood_probability:
-                
+                flood_damages = []
                 print('A Flood occurs')
                 self.last_flood = self.schedule.steps
                 for agent in self.schedule.agents:
@@ -322,7 +321,8 @@ class AdaptationModel(Model):
                                 agent.wet_proofing = 1
                                 agent.dry_proofing = 1
                             print('New flood damage', agent.flood_damage_actual) 
-                            
+                            flood_damages.append(agent.flood_damage_actual)
+                            self.avg_flood_damage = np.mean(flood_damages)
                             damage_costs = self.max_damage_costs * agent.flood_damage_actual
                             agent.budget -= damage_costs
                             if agent.budget < 0:
@@ -340,9 +340,10 @@ class AdaptationModel(Model):
        
     
         # Collect data and advance the model by one step
+        print('Avg flood damage before step: ', self.avg_flood_damage)
         self.datacollector.collect(self)
         self.schedule.step()
-        
+        print('Avg flood damage after step: ', self.avg_flood_damage)
         
     # def run_model(self):
     #     for i in range(6):
