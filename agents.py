@@ -118,6 +118,7 @@ class Households(Agent):
             else:
                 # Agent has implemented elevation as a measure already
                 #print("Elevation implementation complete")
+                pass
             
     def check_wet_proofing(self):
         if self.wet_proofing == 1:
@@ -144,6 +145,7 @@ class Households(Agent):
             #Check if implementation time has been reached during this step
         
         else:
+            pass
             # Agent has implemented wet_proofing as a measure already
             #print("Wet_proofing implementation complete")
                 
@@ -172,6 +174,7 @@ class Households(Agent):
         else:
             # Agent has implemented dry_proofing as a measure already
             #print("dry_proofing implementation complete")
+            pass
         
     def choose_measure(self):
         # Check if AM is higher than highest threshold possible
@@ -363,7 +366,7 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
         flood_risk = self.assess_risk(self.model.flood_probability, self.estimated_flood_impact) #take flood probability and flood impact from model
         public_concern = self.take_survey(self.model.avg_public_concern)
         self.put_on_agenda(public_concern,flood_risk, flood_risk_treshold, public_concern_treshold)
-        self.make_decision(flood_risk, options_list, high=0.8, low=0.4)
+        self.make_decision(flood_risk, self.model.options_list, high=0.8, low=0.4)
         self.implement_decision()
         
 

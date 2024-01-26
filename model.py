@@ -24,12 +24,6 @@ from functions import map_domain_gdf, floodplain_gdf
 dyke = OrganizationInstrument(name = 'Dyke', cost = 8, completion_time = 5, protection_level = 0.5, status = 1)
 wetland = OrganizationInstrument(name = 'Wetland', cost = 5,  completion_time = 2, protection_level = 0.5, status = 1)  
 options_list = [dyke, wetland]
-public_concern_metric = 1 #public concern metric should be a likert scale like distribution 1-5
-
-#could be defined in initialisation
-flood_risk_treshold = 0.3
-public_concern_treshold = 3
-
 
 # Define the AdaptationModel class
 class AdaptationModel(Model):
@@ -39,7 +33,8 @@ class AdaptationModel(Model):
     """
 
     def __init__(self, 
-                 seed = None,
+                 seed = random.seed(42),
+                 options_list = options_list,
                  number_of_households = 25, # number of household agents
                  # Simplified argument for choosing flood map. Can currently be "harvey", "100yr", or "500yr".
                  flood_map_choice='harvey',
@@ -130,6 +125,7 @@ class AdaptationModel(Model):
         self.avg_flood_damage = 0
         self.last_flood = 0
         self.avg_public_concern = 0
+        self.options_list = options_list
         self.infrastructure = False
 
         # generating the graph according to the network used and the network parameters specified
@@ -151,7 +147,7 @@ class AdaptationModel(Model):
 
         
         #create government agent
-        government = Government(unique_id=0, model=self,structure=GovernmentStructure.CENTRALISED, detector=1)
+        government = Government(unique_id=0, model=self,structure=GovernmentStructure.CENTRALISED, detector=0)
         #government.decision = dyke
         self.schedule.add(government)
         # Data collection setup to collect data
@@ -328,7 +324,7 @@ class AdaptationModel(Model):
         assume local flooding instead of global flooding). The actual flood depth can be 
         estimated differently
         """
-        self.flood_impact = random.random()
+        self.flood_impact = random.randint(1, 10)
         #if there is infrastructure:
         if self.infrastructure:        
             self.assign_protection()  #first, assign protection to households in the floodplain

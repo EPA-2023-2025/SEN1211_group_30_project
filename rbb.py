@@ -12,17 +12,11 @@ from shapely.geometry import Point
 from shapely import contains_xy
 from enum import Enum
 
-#should be imported from model:
-flood_probability = 0.1 #float 0-1
-flood_impact = 9 #int [1-10]
-#public_concern_metric = 0.5 #public concern metric should be a likert scale like distribution 1-5
-
 #could be defined in initialisation
 flood_risk_treshold = 0.3
 public_concern_treshold = 0.5
-eng_infra_treshold = 5
-nat_infra_treshold = 3
-timeframe = 5 #(1-flood_prob) * max_time
+
+
 
 class GovernmentStructure(Enum): 
     CENTRALISED = 1 #A centralised government : federal / state
