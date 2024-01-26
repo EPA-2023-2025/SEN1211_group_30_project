@@ -21,7 +21,9 @@ from agents import Government
 from functions import get_flood_map_data, calculate_basic_flood_damage
 from functions import map_domain_gdf, floodplain_gdf
 
-
+dyke = OrganizationInstrument(name = 'Dyke', cost = 8, completion_time = 5, protection_level = 0.5, status = 1)
+wetland = OrganizationInstrument(name = 'Wetland', cost = 5,  completion_time = 2, protection_level = 0.5, status = 1)  
+options_list = [dyke, wetland]
 public_concern_metric = 1 #public concern metric should be a likert scale like distribution 1-5
 
 #could be defined in initialisation
@@ -130,6 +132,8 @@ class AdaptationModel(Model):
         self.max_damage_costs = max_damage_costs
         self.avg_flood_damage = 0
         self.last_flood = 0
+        self.avg_public_concern = 0
+        self.infrastructure = False
 
         # generating the graph according to the network used and the network parameters specified
         self.G = self.initialize_network()
@@ -151,6 +155,7 @@ class AdaptationModel(Model):
         
         #create government agent
         government = Government(unique_id=0, model=self,structure=GovernmentStructure.CENTRALISED, detector=1)
+        #government.decision = dyke
         self.schedule.add(government)
         # Data collection setup to collect data
         model_metrics = {
@@ -158,19 +163,19 @@ class AdaptationModel(Model):
                         # ... other reporters ...
                         }
         
-        #agent_metrics = {
+        agent_metrics = {
                         # "FloodDepthEstimated": "flood_depth_estimated",
                         # "FloodDamageEstimated" : "flood_damage_estimated",
                         # "FloodDepthActual": "flood_depth_actual",
-                        # "FloodDamageActual" : "flood_damage_actual",
-                        # "IsAdapted": "is_adapted",
+                         "FloodDamageActual" : (lambda a: a.flood_damage_actual if a.unique_id != 0 else None),
+                         "IsAdapted": (lambda a: a.is_adapted if a.unique_id != 0 else None),
                         # #"NeighborsCount": lambda a: a.count_neighbors(radius=1),
                         # "location":"location",
-                        # #"Adaptation_Motivation": lambda a: a.determine_AM()
+                        "Adaptation_Motivation": (lambda a: a.AM if a.unique_id != 0 else None)
                         # # ... other reporters ...
-                        #}
+                        }
         #set up the data collector 
-        self.datacollector = DataCollector(model_reporters=model_metrics) #, agent_reporters=agent_metrics)
+        self.datacollector = DataCollector(model_reporters=model_metrics , agent_reporters=agent_metrics)
             
 
     def initialize_network(self):
@@ -252,7 +257,74 @@ class AdaptationModel(Model):
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')
         plt.show()
+        return
+        
+    
+    def calculate_public_concern(self):
+        public_concern = []
+        for agent in self.schedule.agents: 
+            if agent.unique_id != 0:
+                public_concern.append(agent.threat_appraisal)
+        self.avg_public_concern = np.mean(public_concern)
+        return self.avg_public_concern
 
+
+    def get_floodplain_pop(self):
+        """Returns a list of the unique id's of all the households that are located in a floodplain. """
+        
+        floodplain_pop = []
+        for agent in self.schedule.agents:
+            if agent.unique_id != 0:
+                if agent.in_floodplain: 
+                    floodplain_pop.append(agent)
+        #return the list of agents that is in the floodplain
+        #print(type(floodplain_pop))
+        return floodplain_pop
+    
+    
+    def get_protected_pop(self):
+        """Returns a list of the protected households in the floodplain, 
+        based on the large infrastructure"""
+        #first, determine which households are in the floodplain:
+        floodplain_pop = self.get_floodplain_pop()
+        print("Print floodplain pop: ", floodplain_pop)
+        #print(type(floodplain_pop))
+        #access the government agent
+        gov = [agent for agent in self.schedule.agents if agent.unique_id==0][0]
+
+        #print("agent: ", gov )
+        #determine the sample size to be drawn from the floodplain population = protection level * size of floodplain population 
+        sample_size = int(gov.decision.protection_level * len(floodplain_pop))
+        print("Sample size: ", sample_size)
+    
+        #create a list of the population in the floodplain that is protected by the infrastructure. 
+        protected_pop = random.sample(floodplain_pop, sample_size)
+        #return the list of agents that is protected
+        print("protected_pop: ", protected_pop)
+        return protected_pop
+            
+    
+    def assign_protection(self):
+        """Assigns a protected status to households in the floodplain 
+        if they are within the protection range of a certain infrastructure"""
+        
+        #get the list of households objects that are protected
+        protected_pop = self.get_protected_pop()
+        print(protected_pop)
+        #for every household in the list
+        for household in protected_pop:
+            #assign their protected status
+            household.is_protected = True
+            
+        return
+    
+        
+        
+            
+    
+            
+            
+            
     def step(self):
         """
         introducing a shock: 
@@ -264,6 +336,14 @@ class AdaptationModel(Model):
         estimated differently
         """
         
+        #if there is infrastructure:
+        if self.infrastructure:        
+            self.assign_protection()  #first, assign protection to households in the floodplain
+        
+        # for agent in self.schedule.agents:
+        #     if agent.unique_id != 0: #if the agent in the scheduler is not the government
+        #         if agent.in_floodplain:
+        #             print("agent: ", agent.unique_id, "Is protected: ", agent.is_protected) 
         
         if self.schedule.steps >= 5:
             # Check if flood occurs
@@ -271,79 +351,92 @@ class AdaptationModel(Model):
                 flood_damages = []
                 print('A Flood occurs')
                 self.last_flood = self.schedule.steps
+                #check to see if there is an infrastructural protection measure: 
+                # if there is a measure, check its protection level
+                # depending on the protection level,, take the percentage of agents in the floodplain and do not account damage to that percentage
+                
                 for agent in self.schedule.agents:
                     if agent.unique_id != 0: #if the agent in the scheduler is not the government
                         if agent.in_floodplain:
-                            #Agent experiences a food
-                            # agent.prior_hazard_experience.append(1)
-                            # Calculate the actual flood depth as a random number between 0.5 and 1.2 times the estimated flood depth
-                            agent.flood_depth_actual = random.uniform(0.5, 1.2) * agent.flood_depth_estimated
-                            # calculate the actual flood damage given the actual flood depth
-                            agent.flood_damage_actual = calculate_basic_flood_damage(agent.flood_depth_actual)
-                            print('Original flood damage', agent.flood_damage_actual)
-                            if agent.flood_depth_actual <= self.elevation_protection:
-                                if agent.elevation == 3:
-                                    agent.flood_damage_actual = agent.flood_damage_actual * (1-self.elevation_effectiveness)
+                            print("agent: ", agent.unique_id, "Is protected: ", agent.is_protected)
+                            if agent.is_protected == False:
                                 
-                                elif agent.dry_proofing == 3 and agent.wet_proofing == 3:
-                                    agent.flood_damage_actual = agent.flood_damage_actual * (1-self.dry_proofing_effectiveness) * (1-self.wet_proofing_effectiveness)
+                                #if agent.is_protected == False:
+                                #Agent experiences a food
+                                # agent.prior_hazard_experience.append(1)
+                                # Calculate the actual flood depth as a random number between 0.5 and 1.2 times the estimated flood depth
+                                agent.flood_depth_actual = random.uniform(0.5, 1.2) * agent.flood_depth_estimated
+                                # calculate the actual flood damage given the actual flood depth
+                                agent.flood_damage_actual = calculate_basic_flood_damage(agent.flood_depth_actual)
+                                print('Original flood damage', agent.flood_damage_actual)
+                                if agent.flood_depth_actual <= self.elevation_protection:
+                                    if agent.elevation == 3:
+                                        agent.flood_damage_actual = agent.flood_damage_actual * (1-self.elevation_effectiveness)
                                     
-                                elif agent.wet_proofing ==3:
-                                    agent.flood_damage_actual = agent.flood_damage_actual * (1-self.wet_proofing_effectiveness)
-                                
-                                elif agent.dry_proofing ==3:
-                                    agent.flood_damage_actual = agent.flood_damage_actual * (1-self.dry_proofing_effectiveness)
-                            
-                                
-                            elif agent.flood_depth_actual <= self.dry_proofing_protection:
-                                agent.elevation = 1
-                                if agent.dry_proofing == 3 and agent.wet_proofing == 3:
-                                    agent.flood_damage_actual = agent.flood_damage_actual * (1-self.dry_proofing_effectiveness) * (1-self.wet_proofing_effectiveness)
+                                    elif agent.dry_proofing == 3 and agent.wet_proofing == 3:
+                                        agent.flood_damage_actual = agent.flood_damage_actual * (1-self.dry_proofing_effectiveness) * (1-self.wet_proofing_effectiveness)
+                                        
+                                    elif agent.wet_proofing ==3:
+                                        agent.flood_damage_actual = agent.flood_damage_actual * (1-self.wet_proofing_effectiveness)
                                     
-                                elif agent.wet_proofing ==3:
-                                    agent.flood_damage_actual = agent.flood_damage_actual * (1-self.wet_proofing_effectiveness)
+                                    elif agent.dry_proofing ==3:
+                                        agent.flood_damage_actual = agent.flood_damage_actual * (1-self.dry_proofing_effectiveness)
                                 
-                                elif agent.dry_proofing ==3:
-                                    agent.flood_damage_actual = agent.flood_damage_actual * (1-self.dry_proofing_effectiveness)
                                     
-                            elif agent.flood_depth_actual <= self.wet_proofing_protection:
-                                # in case the agent had implemented/was implementing elevation and dry-proofing, 
-                                # reset them because they are destroyed by the flood
-                                agent.elevation = 1
-                                agent.dry_proofing = 1
-                                if agent.wet_proofing ==3:
-                                    agent.flood_damage_actual = agent.flood_damage_actual * (1-self.wet_proofing_effectiveness)
-                            
-                            
-                            # Reset all protection measures to 1 after flood because flood exceeds all measures' inundation level
-                            else:
-                                agent.elevation = 1
-                                agent.wet_proofing = 1
-                                agent.dry_proofing = 1
-                            print('New flood damage', agent.flood_damage_actual) 
-                            flood_damages.append(agent.flood_damage_actual)
-                            self.avg_flood_damage = np.mean(flood_damages)
-                            damage_costs = self.max_damage_costs * agent.flood_damage_actual
-                            agent.budget -= damage_costs
-                            if agent.budget < 0:
-                                agent.budget = 0
+                                elif agent.flood_depth_actual <= self.dry_proofing_protection:
+                                    agent.elevation = 1
+                                    if agent.dry_proofing == 3 and agent.wet_proofing == 3:
+                                        agent.flood_damage_actual = agent.flood_damage_actual * (1-self.dry_proofing_effectiveness) * (1-self.wet_proofing_effectiveness)
+                                        
+                                    elif agent.wet_proofing ==3:
+                                        agent.flood_damage_actual = agent.flood_damage_actual * (1-self.wet_proofing_effectiveness)
+                                    
+                                    elif agent.dry_proofing ==3:
+                                        agent.flood_damage_actual = agent.flood_damage_actual * (1-self.dry_proofing_effectiveness)
+                                        
+                                elif agent.flood_depth_actual <= self.wet_proofing_protection:
+                                    # in case the agent had implemented/was implementing elevation and dry-proofing, 
+                                    # reset them because they are destroyed by the flood
+                                    agent.elevation = 1
+                                    agent.dry_proofing = 1
+                                    if agent.wet_proofing ==3:
+                                        agent.flood_damage_actual = agent.flood_damage_actual * (1-self.wet_proofing_effectiveness)
+                                
+                                
+                                # Reset all protection measures to 1 after flood because flood exceeds all measures' inundation level
+                                else:
+                                    agent.elevation = 1
+                                    agent.wet_proofing = 1
+                                    agent.dry_proofing = 1
+                                print('New flood damage', agent.flood_damage_actual) 
+                                flood_damages.append(agent.flood_damage_actual)
+                                
+                                damage_costs = self.max_damage_costs * agent.flood_damage_actual
+                                agent.budget -= damage_costs
+                                if agent.budget < 0:
+                                    agent.budget = 0
+                                else:
+                                    pass
                             else:
                                 pass
-                            
                     else:
-                        #government decision if flood occurs
+                        
                         pass
-                            
-                     
-                         
-                     
-       
-    
+                    
+                if not flood_damages :
+                    self.avg_flood_damage = 0
+                else:     
+                    self.avg_flood_damage = np.mean(flood_damages)
+                 
+
         # Collect data and advance the model by one step
-        print('Avg flood damage before step: ', self.avg_flood_damage)
+        # print('Avg flood damage last step: ', self.avg_flood_damage)
+        # print('Avg public concern: ', self.avg_public_concern)
+        
+        self.calculate_public_concern()
         self.datacollector.collect(self)
         self.schedule.step()
-        print('Avg flood damage after step: ', self.avg_flood_damage)
+       
         
     # def run_model(self):
     #     for i in range(6):

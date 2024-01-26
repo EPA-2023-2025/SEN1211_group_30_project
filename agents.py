@@ -10,17 +10,15 @@ from rbb import OrganizationInstrument
 # Import functions from functions.py
 from functions import generate_random_location_within_map_domain, get_flood_depth, calculate_basic_flood_damage, floodplain_multipolygon
 
-#should be imported from model:
-flood_probability = 0.1
-flood_impact = 9 #int [1-10]
+
 public_concern_metric = 1 #public concern metric should be a likert scale like distribution 1-5
 
 #could be defined in initialisation
 flood_risk_treshold = 2
 public_concern_treshold = 3
 
-dyke = OrganizationInstrument(name = 'Dyke', cost = 8, planning = 16, protection_level = 8, status = 1)
-wetland = OrganizationInstrument(name = 'Wetland', cost = 5,  planning = 10, protection_level = 5, status = 1)  
+dyke = OrganizationInstrument(name = 'Dyke', cost = 8, completion_time = 5, protection_level = 0.5, status = 1)
+wetland = OrganizationInstrument(name = 'Wetland', cost = 5,  completion_time = 2, protection_level = 0.5, status = 1)  
 options_list = [dyke, wetland]
 
 
@@ -73,7 +71,7 @@ class Households(Agent):
         self.in_floodplain = False
         if contains_xy(geom=floodplain_multipolygon, x=self.location.x, y=self.location.y):
             self.in_floodplain = True
-
+        self.is_protected = False    
         # Get the estimated flood depth at those coordinates. 
         # the estimated flood depth is calculated based on the flood map (i.e., past data) so this is not the actual flood depth
         # Flood depth can be negative if the location is at a high elevation
@@ -90,7 +88,7 @@ class Households(Agent):
         #self.flood_depth_actual = 0
         
         #calculate the actual flood damage given the actual flood depth. Flood damage is a factor between 0 and 1
-        #self.flood_damage_actual = calculate_basic_flood_damage(flood_depth=self.flood_depth_actual)
+        self.flood_damage_actual = 0  #calculate_basic_flood_damage(flood_depth=self.flood_depth_actual)
         self.AM = self.determine_AM()
     
     def determine_AM(self):
@@ -229,12 +227,18 @@ class Households(Agent):
         # elif self.flood_depth_estimated <= self.model.lower_threat_threshold:
         #     self.threat_appraisal = 0.9 * self.threat_appraisal
         
-        # Needs to be dependent on government measures
-        if self.flood_depth_estimated >= random.uniform(0, 10):
-            #estimated flood damage kan 
-            self.threat_appraisal = 1.1 * self.threat_appraisal
+        # a household can think it is protected if there is infrastructure. 
+        if self.model.infrastructure:
+            self.threat_appraisal = random.choice([0.9, 0.95, 1.0]) * self.threat_appraisal
         else:
-            self.threat_appraisal = 0.9 * self.threat_appraisal
+            self.threat_appraisal = random.choice([1.0, 1.05, 1.1]) * self.threat_appraisal
+            
+        # Needs to be dependent on government measures
+        # if self.flood_depth_estimated >= random.uniform(0, 10):
+        #     #estimated flood damage kan 
+        #     self.threat_appraisal = 1.1 * self.threat_appraisal
+        # else:
+        #     self.threat_appraisal = 0.9 * self.threat_appraisal
         
     def update_coping_appraisal(self):
         if self.budget >= self.model.upper_budget_threshold:
@@ -271,13 +275,13 @@ class Households(Agent):
         self.external_influence = self.external_influence * (1+(avg_neighbor_AM-self.AM))
     
     def update_AM(self):
-        print('id:', self.unique_id, 'am:', self.AM)
+       #print('id:', self.unique_id, 'am:', self.AM)
         self.update_threat_appraisal()
         self.update_coping_appraisal()
         self.update_preceding_flood_engagement()
         self.update_external_influence()
         self.determine_AM()
-        print('id:', self.unique_id, 'am updated:', self.AM)
+        #print('id:', self.unique_id, 'am updated:', self.AM)
               
     # Function to count friends who can be influencial.
     def count_neighbors(self, radius):
@@ -314,6 +318,8 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
         RBBGovernment.__init__(self, structure, detector)
         self.estimated_flood_impact = 3
         self.agenda = False
+        self.decision_made = False
+        self.decision = None
         
     def estimate_impact(self, damage_treshold):
         """A government estimates the impact of a potential flood, 
@@ -327,45 +333,60 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
                
     def make_decision(self, flood_risk, options_list, high, low):
         """Government makes a decision on what kind of tool to deploy"""
-        
-        #First, the topic needs to be on the agenda:
-
-        if self.agenda:#if a topic is on the agenda
-    
-            if flood_risk >= high:
-                # if the estimated risk is high, government will prioritise avg implementation time
-                lowest_planning = min([option.planning for option in options_list])
-                decision = [option for option in options_list if option.planning == lowest_planning][0]
-            elif low<=flood_risk< high:
-                # if the estimated risk is medium, government will prioritise protection level
-                highest_protection = max([option.protection_level for option in options_list])
-                decision = [option for option in options_list if option.planning == highest_protection][0]
-            elif flood_risk < low:
-                lowest_cost = min([option.cost for option in options_list])
-                decision = [option for option in options_list if option.planning == lowest_cost][0]
-                
-                # if the estimated risk is low, government will prioritise cost 
-                # based on the organisation of the government, the implementation time of the option will change.
-            decision.impact_planning(self.structure)
-            #change the status of the measure to ' implementing'
-            decision.status = 2
-            print('Decision:', decision.name)
-            #change agenda back to False
-            self.agenda = False
+        if self.decision_made:
+            self.decision.change_status()
             
+        else: #if no decision has been made yet
+        #First, the topic needs to be on the agenda:
+            if self.agenda:#if a topic is on the agenda
+        
+                if flood_risk >= high:
+                    # if the estimated risk is high, government will prioritise avg implementation time
+                    lowest_planning = min([option.completion_time for option in options_list])
+                    self.decision = [option for option in options_list if option.completion_time == lowest_planning][0]
+                elif low<=flood_risk< high:
+                    # if the estimated risk is medium, government will prioritise protection level
+                    highest_protection = max([option.protection_level for option in options_list])
+                    self.decision = [option for option in options_list if option.planning == highest_protection][0]
+                elif flood_risk < low:
+                    lowest_cost = min([option.cost for option in options_list])
+                    self.decision = [option for option in options_list if option.planning == lowest_cost][0]
+                    
+                    # if the estimated risk is low, government will prioritise cost 
+                    # based on the organisation of the government, the implementation time of the option will change.
+                self.decision.impact_planning(self.structure)
+                #change the status of the measure to ' implementing'
+                self.decision.change_status()
                 
-        else:#if the topic was not on the agenda
-            print('Flood measure decision not on agenda')
-            decision = None
-        return decision
+                print('Decision:', self.decision.name)
+                #change agenda back to False
+                self.change_agenda
+                self.decision_made = True
+            else:#if the topic was not on the agenda
+                print('Flood measure decision not on agenda')
+                self.decision = None
+        
+        return self.decision
+    
+    
+    def implement_decision(self):
+        """Implement the infrastructe in the model"""
+        if self.decision_made == True and self.decision.status == 3:
+            self.model.infrastructure = True
+        else:
+            pass
+        return 
+    
+        
     
     def step(self):
-        RBBGovernment.step(self)
+        #RBBGovernment.step(self)
         #if a decision has been made in the previous step, this doesnt have to happen anymore
         self.estimate_impact(damage_treshold = 0.4)
         flood_risk = self.assess_risk(self.model.flood_probability, self.estimated_flood_impact) #take flood probability and flood impact from model
-        public_concern = self.take_survey(public_concern_metric)
-        self.put_on_agenda(flood_risk, public_concern, flood_risk_treshold, public_concern_treshold)
+        public_concern = self.take_survey(self.model.avg_public_concern)
+        self.put_on_agenda(public_concern,flood_risk, flood_risk_treshold, public_concern_treshold)
         self.make_decision(flood_risk, options_list, high=0.8, low=0.4)
+        self.implement_decision()
         
 

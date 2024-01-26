@@ -32,13 +32,13 @@ from model import AdaptationModel
 
 m1 = AdaptationModel()
 
-for i in range(1, 8):
+for i in range(0, 6):
     print('WE ARE NOW AT STEP:', i)
     m1.step()
     
-#agent_data = m1.datacollector.get_agent_vars_dataframe()
+agent_data = m1.datacollector.get_agent_vars_dataframe()
 model_data = m1.datacollector.get_model_vars_dataframe()
 
-#agent_data.head()
-#model_data.head()
+agent_data.head()
+model_data.head()
 
