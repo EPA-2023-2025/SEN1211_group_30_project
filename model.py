@@ -171,7 +171,8 @@ class AdaptationModel(Model):
                          "IsAdapted": (lambda a: a.is_adapted if a.unique_id != 0 else None),
                         # #"NeighborsCount": lambda a: a.count_neighbors(radius=1),
                         # "location":"location",
-                        "Adaptation_Motivation": (lambda a: a.AM if a.unique_id != 0 else None)
+                        "Adaptation_Motivation": (lambda a: a.AM if a.unique_id != 0 else None),
+                        "Financial_Loss": (lambda a: a.financial_loss if a.unique_id != 0 else None)
                         # # ... other reporters ...
                         }
         #set up the data collector 
@@ -243,7 +244,8 @@ class AdaptationModel(Model):
         floodplain_gdf.plot(ax=ax, color='lightblue', edgecolor='k', alpha=0.5)
 
         # Collect agent locations and statuses
-        for agent in self.schedule.agents:
+        households = [agent for agent in self.schedule.agents if agent.unique_id != 0]
+        for agent in households:
             color = 'blue' if agent.is_adapted else 'red'
             ax.scatter(agent.location.x, agent.location.y, color=color, s=10, label=color.capitalize() if not ax.collections else "")
             ax.annotate(str(agent.unique_id), (agent.location.x, agent.location.y), textcoords="offset points", xytext=(0,1), ha='center', fontsize=9)
@@ -413,6 +415,7 @@ class AdaptationModel(Model):
                                 
                                 damage_costs = self.max_damage_costs * agent.flood_damage_actual
                                 agent.budget -= damage_costs
+                                agent.financial_loss += damage_costs
                                 if agent.budget < 0:
                                     agent.budget = 0
                                 else:
