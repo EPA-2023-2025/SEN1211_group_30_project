@@ -68,9 +68,6 @@ class AdaptationModel(Model):
                 upper_budget_threshold = 7000,
                 lower_budget_threshold = 3000,
                 
-                # upper_threat_threshold = 4,
-                # lower_threat_threshold = 1,
-                
                 elevation_time = 4, #time steps
                 elevation_cost = 5000, # cost of implementing elevation
                 elevation_protection = 0.3, #inundation level in meters
@@ -289,7 +286,7 @@ class AdaptationModel(Model):
         based on the large infrastructure"""
         #first, determine which households are in the floodplain:
         floodplain_pop = self.get_floodplain_pop()
-        print("Print floodplain pop: ", floodplain_pop)
+        # print("Print floodplain pop: ", floodplain_pop)
         #print(type(floodplain_pop))
         #access the government agent
         gov = [agent for agent in self.schedule.agents if agent.unique_id==0][0]
@@ -297,12 +294,12 @@ class AdaptationModel(Model):
         #print("agent: ", gov )
         #determine the sample size to be drawn from the floodplain population = protection level * size of floodplain population 
         sample_size = int(gov.decision.protection_level * len(floodplain_pop))
-        print("Sample size: ", sample_size)
+        # print("Sample size: ", sample_size)
     
         #create a list of the population in the floodplain that is protected by the infrastructure. 
         protected_pop = random.sample(floodplain_pop, sample_size)
         #return the list of agents that is protected
-        print("protected_pop: ", protected_pop)
+        # print("protected_pop: ", protected_pop)
         return protected_pop
             
     
@@ -312,20 +309,14 @@ class AdaptationModel(Model):
         
         #get the list of households objects that are protected
         protected_pop = self.get_protected_pop()
-        print(protected_pop)
+        # print(protected_pop)
         #for every household in the list
         for household in protected_pop:
             #assign their protected status
             household.is_protected = True
             
         return
-    
-        
-        
-            
-    
-            
-            
+      
             
     def step(self):
         """
@@ -337,7 +328,7 @@ class AdaptationModel(Model):
         assume local flooding instead of global flooding). The actual flood depth can be 
         estimated differently
         """
-        
+        self.flood_impact = random.random()
         #if there is infrastructure:
         if self.infrastructure:        
             self.assign_protection()  #first, assign protection to households in the floodplain
@@ -351,7 +342,7 @@ class AdaptationModel(Model):
             # Check if flood occurs
             if random.random() <= self.flood_probability:
                 flood_damages = []
-                print('A Flood occurs')
+                # print('A Flood occurs')
                 self.last_flood = self.schedule.steps
                 #check to see if there is an infrastructural protection measure: 
                 # if there is a measure, check its protection level
@@ -360,7 +351,7 @@ class AdaptationModel(Model):
                 for agent in self.schedule.agents:
                     if agent.unique_id != 0: #if the agent in the scheduler is not the government
                         if agent.in_floodplain:
-                            print("agent: ", agent.unique_id, "Is protected: ", agent.is_protected)
+                            # print("agent: ", agent.unique_id, "Is protected: ", agent.is_protected)
                             if agent.is_protected == False:
                                 
                                 #if agent.is_protected == False:
@@ -370,7 +361,7 @@ class AdaptationModel(Model):
                                 agent.flood_depth_actual = random.uniform(0.5, 1.2) * agent.flood_depth_estimated
                                 # calculate the actual flood damage given the actual flood depth
                                 agent.flood_damage_actual = calculate_basic_flood_damage(agent.flood_depth_actual)
-                                print('Original flood damage', agent.flood_damage_actual)
+                                # print('Original flood damage', agent.flood_damage_actual)
                                 if agent.flood_depth_actual <= self.elevation_protection:
                                     if agent.elevation == 3:
                                         agent.flood_damage_actual = agent.flood_damage_actual * (1-self.elevation_effectiveness)
@@ -410,7 +401,7 @@ class AdaptationModel(Model):
                                     agent.elevation = 1
                                     agent.wet_proofing = 1
                                     agent.dry_proofing = 1
-                                print('New flood damage', agent.flood_damage_actual) 
+                                # print('New flood damage', agent.flood_damage_actual) 
                                 flood_damages.append(agent.flood_damage_actual)
                                 
                                 damage_costs = self.max_damage_costs * agent.flood_damage_actual

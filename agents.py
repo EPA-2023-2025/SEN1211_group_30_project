@@ -53,12 +53,6 @@ class Households(Agent):
         
         self.financial_loss = 0 #cumulative sum of previous financial losses due to flood
         
-        # history of floods during last 20 steps (5 years)
-        #self.prior_harard_experience = [0 for i in range(20)] # to use self.prior_harard_experience / (self.model.schedule.steps / 4)
-        
-        # self.protection_level -> maybe add later
-        
-        # self.damaged -> add later
         self.savings_income = random.randint(300, 700) #Assumption: Every agent gets a standard
         self.detached = random.choice([0, 1]) # 0 = not detached, 1 = detached
 
@@ -123,7 +117,7 @@ class Households(Agent):
             
             else:
                 # Agent has implemented elevation as a measure already
-                print("Elevation implementation complete")
+                #print("Elevation implementation complete")
             
     def check_wet_proofing(self):
         if self.wet_proofing == 1:
@@ -151,7 +145,7 @@ class Households(Agent):
         
         else:
             # Agent has implemented wet_proofing as a measure already
-            print("Wet_proofing implementation complete")
+            #print("Wet_proofing implementation complete")
                 
     def check_dry_proofing(self):
         if self.dry_proofing == 1:
@@ -177,7 +171,7 @@ class Households(Agent):
         
         else:
             # Agent has implemented dry_proofing as a measure already
-            print("dry_proofing implementation complete")
+            #print("dry_proofing implementation complete")
         
     def choose_measure(self):
         # Check if AM is higher than highest threshold possible
@@ -222,39 +216,22 @@ class Households(Agent):
             self.check_dry_proofing()
        
     def update_threat_appraisal(self):
-        # if self.flood_depth_estimated >= self.model.upper_threat_threshold:
-        #     self.threat_appraisal = 1.1 * self.threat_appraisal
-        # elif self.flood_depth_estimated <= self.model.lower_threat_threshold:
-        #     self.threat_appraisal = 0.9 * self.threat_appraisal
-        
         # a household can think it is protected if there is infrastructure. 
         if self.model.infrastructure:
             self.threat_appraisal = random.choice([0.9, 0.95, 1.0]) * self.threat_appraisal
         else:
             self.threat_appraisal = random.choice([1.0, 1.05, 1.1]) * self.threat_appraisal
             
-        # Needs to be dependent on government measures
-        # if self.flood_depth_estimated >= random.uniform(0, 10):
-        #     #estimated flood damage kan 
-        #     self.threat_appraisal = 1.1 * self.threat_appraisal
-        # else:
-        #     self.threat_appraisal = 0.9 * self.threat_appraisal
         
     def update_coping_appraisal(self):
         if self.budget >= self.model.upper_budget_threshold:
             self.coping_appraisal = 1.1 * self.coping_appraisal
         elif self.budget <= self.model.lower_budget_threshold:
             self.coping_appraisal = 0.9 * self.coping_appraisal 
-        # if self.budget >= random.random(1000,10000):
-        #     self.coping_appraisal = 1.1 * self.coping_appraisal
-        # else:
-        #     self.coping_appraisal = 0.9 * self.coping_appraisal
        
     def update_preceding_flood_engagement(self):
         flood_recency = 1 - ((self.model.schedule.steps - self.model.last_flood) / 20)
         if np.mean(self.undergone_measures) >= random.random():
-            # factor = sum(self.prior_hazard_experience) / (self.model.schedule.steps/4)
-            # if self.prior_hazard_experience >= random.random():
             if self.model.last_flood != 0:
                 if flood_recency >= random.random():
                     self.preceding_flood_engagement = self.preceding_flood_engagement * 1.1
@@ -283,11 +260,11 @@ class Households(Agent):
         self.determine_AM()
         #print('id:', self.unique_id, 'am updated:', self.AM)
               
-    # Function to count friends who can be influencial.
-    def count_neighbors(self, radius):
-        """Count the number of neighbors within a given radius (number of edges away). This is social relation and not spatial"""
-        neighbors = self.model.grid.get_neighborhood(self.pos, include_center=False, radius=radius)
-        return len(neighbors)
+    # # Function to count friends who can be influencial.
+    # def count_neighbors(self, radius):
+    #     """Count the number of neighbors within a given radius (number of edges away). This is social relation and not spatial"""
+    #     neighbors = self.model.grid.get_neighborhood(self.pos, include_center=False, radius=radius)
+    #     return len(neighbors)
 
     def step(self):
         self.is_adapted = False
@@ -358,12 +335,12 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
                 #change the status of the measure to ' implementing'
                 self.decision.change_status()
                 
-                print('Decision:', self.decision.name)
+                #print('Decision:', self.decision.name)
                 #change agenda back to False
                 self.change_agenda
                 self.decision_made = True
             else:#if the topic was not on the agenda
-                print('Flood measure decision not on agenda')
+                #print('Flood measure decision not on agenda')
                 self.decision = None
         
         return self.decision
