@@ -50,7 +50,7 @@ class AdaptationModel(Model):
                  number_of_nearest_neighbours = 5,
                  
                  # Probability of flood occurence
-                 flood_probability = 0.3, #basecase, based on calculation that there have been 12 floods in the past 41 years in Houston (https://www.understandinghouston.org/topic/disasters/disaster-risks#history_of_disasters)
+                 flood_probability = 0.2, #basecase, based on calculation that there have been 12 floods in the past 41 years in Houston (https://www.understandinghouston.org/topic/disasters/disaster-risks#history_of_disasters)
                  
                 #intention action gap which ensures that only a certain percentage of households can implement a measure
                 intention_action_gap = 0.3,
@@ -84,6 +84,8 @@ class AdaptationModel(Model):
         # defining the variables and setting the values
         self.number_of_households = number_of_households  # Total number of household agents
         self.seed = seed
+
+        self.flood = False
 
         # network
         self.network = network # Type of network to be created
@@ -147,10 +149,11 @@ class AdaptationModel(Model):
         self.schedule.add(government)
         # Data collection setup to collect data
         model_metrics = {
-                        "total_adapted_households": "total_adapted_households",
+                        "total_adapted_households": self.total_adapted_households,
                         "Infrastructure": "infrastructure",
                         "Average flood damage": "avg_flood_damage",
-                        "Average public concern": "avg_public_concern"
+                        "Average public concern": "avg_public_concern",
+                        "Flood" : "flood"
                         }
         
         agent_metrics = {
@@ -315,7 +318,7 @@ class AdaptationModel(Model):
         assume local flooding instead of global flooding). The actual flood depth can be 
         estimated differently
         """
-        
+        self.flood = False
         #if there is infrastructure:
         if self.infrastructure:        
             self.assign_protection()  #first, assign protection to households in the floodplain
@@ -323,7 +326,9 @@ class AdaptationModel(Model):
             
         if self.schedule.steps >= 5:
             # Check if flood occurs
+
             if random.random() <= self.flood_probability:
+                self.flood = True
                 flood_damages = []
                 # A Flood occurs
                 self.last_flood = self.schedule.steps

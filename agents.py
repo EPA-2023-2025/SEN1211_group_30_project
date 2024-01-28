@@ -213,14 +213,14 @@ class Households(Agent):
             self.threat_appraisal = random.choice([0.9, 0.95, 1.0]) * self.threat_appraisal
         else:
             self.threat_appraisal = random.choice([1.0, 1.05, 1.1]) * self.threat_appraisal
-            
+        return
         
     def update_coping_appraisal(self):
         if self.budget >= self.model.upper_budget_threshold:
             self.coping_appraisal = 1.1 * self.coping_appraisal
         elif self.budget <= self.model.lower_budget_threshold:
             self.coping_appraisal = 0.9 * self.coping_appraisal 
-       
+
     def update_preceding_flood_engagement(self):
         flood_recency = 1 - ((self.model.schedule.steps - self.model.last_flood) / 20)
         if np.mean(self.undergone_measures) >= random.random():
@@ -352,10 +352,10 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
                 elif low<=flood_risk< high:
                     # if the estimated risk is medium, government will prioritise protection level
                     highest_protection = max([option.protection_level for option in options_list])
-                    self.decision = [option for option in options_list if option.completion_time == highest_protection][0]
+                    self.decision = [option for option in options_list if option.protection_level == highest_protection][0]
                 elif flood_risk < low:
                     lowest_cost = min([option.cost for option in options_list])
-                    self.decision = [option for option in options_list if option.completion_time == lowest_cost][0]
+                    self.decision = [option for option in options_list if option.cost == lowest_cost][0]
                     
                     # if the estimated risk is low, government will prioritise cost 
                     # based on the organisation of the government, the implementation time of the option will change.
