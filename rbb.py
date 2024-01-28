@@ -41,7 +41,7 @@ class RBBGovernment():
     def assess_risk(self, flood_probability: float, flood_impact: int): 
         """Assess the risk of a flooding"""
         flood_risk = flood_probability * flood_impact 
-        print("flood risk: ", flood_risk)
+        # print("flood risk: ", flood_risk)
         return flood_risk
     
     
@@ -156,7 +156,7 @@ class OrganizationInstrument():
                 self.status = 3 #if the implementation is complete, change status to 'implemented' 
         else: 
             self.status = 3
-        print("Status of ", self.name, ": ", self.status, "\n implementation counter: ", self.implementation_counter )
+        # print("Status of ", self.name, ": ", self.status, "\n implementation counter: ", self.implementation_counter )
         return self.status
     
             

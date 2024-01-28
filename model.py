@@ -35,7 +35,7 @@ class AdaptationModel(Model):
     def __init__(self, 
                  seed = random.seed(42),
                  options_list = options_list, 
-                 number_of_households = 25, # number of household agents
+                 number_of_households = 50, # number of household agents
                  # Simplified argument for choosing flood map. Can currently be "harvey", "100yr", or "500yr".
                  flood_map_choice='harvey',
                  # ### network related parameters ###
@@ -76,7 +76,16 @@ class AdaptationModel(Model):
                 dry_proofing_protection = 1, # inundation level in meters
                 dry_proofing_effectiveness = 0.85, #effectiveness of dry_proofing
                 
-                max_damage_costs = 5000 #Maximum repair costs a household can make -> change later
+                max_damage_costs = 5000, #Maximum repair costs a household can make -> change later
+
+                 # government parameters
+                flood_risk_threshold = 1.5,
+                public_concern_threshold = 0.6,
+                damage_threshold = 0.3,
+                high_risk_bound = 2.9,
+                lower_risk_bound = 1.9,
+
+                 government_decision = False
                  ):
         
         super().__init__(seed = seed)
@@ -125,6 +134,16 @@ class AdaptationModel(Model):
         self.options_list = options_list
         self.infrastructure = False
 
+
+        self.flood_risk_threshold = flood_risk_threshold
+        self.public_concern_threshold = public_concern_threshold
+        self.damage_threshold = damage_threshold
+
+        self.high_risk_bound = high_risk_bound
+        self.lower_risk_bound = lower_risk_bound
+
+        self.government_decision = government_decision
+
         # generating the graph according to the network used and the network parameters specified
         self.G = self.initialize_network()
         # create grid out of network graph
@@ -150,6 +169,7 @@ class AdaptationModel(Model):
         # Data collection setup to collect data
         model_metrics = {
                         "total_adapted_households": self.total_adapted_households,
+                        "total_decisions_to_adapt": self.total_decision_to_adapt,
                         "Infrastructure": "infrastructure",
                         "Average flood damage": "avg_flood_damage",
                         "Average public concern": "avg_public_concern",
@@ -167,7 +187,7 @@ class AdaptationModel(Model):
                         "Adaptation_Motivation": (lambda a: a.AM if isinstance(a, Households) else None),
                         "Financial_Loss": (lambda a: a.financial_loss if isinstance(a, Households) else None),
                         "Agenda": (lambda a: a.agenda if isinstance(a, Government) else None),
-                        "Decision": (lambda a: a.decision if isinstance(a, Government) else None)
+                        "Decision": (lambda a: a.decision.name if isinstance(a, Government) and a.decision else None)
                         }
         #set up the data collector 
         self.datacollector = DataCollector(model_reporters=model_metrics , agent_reporters=agent_metrics)
@@ -225,6 +245,12 @@ class AdaptationModel(Model):
             self.flood_map)
 
     def total_adapted_households(self):
+        """Return the total number of households that have adapted."""
+        #BE CAREFUL THAT YOU MAY HAVE DIFFERENT AGENT TYPES SO YOU NEED TO FIRST CHECK IF THE AGENT IS ACTUALLY A HOUSEHOLD AGENT USING "ISINSTANCE"
+        adapted_count = sum([1 for agent in self.schedule.agents if isinstance(agent, Households) and agent.is_adapted_cumulatief])
+        return adapted_count
+
+    def total_decision_to_adapt(self):
         """Return the total number of households that have adapted."""
         #BE CAREFUL THAT YOU MAY HAVE DIFFERENT AGENT TYPES SO YOU NEED TO FIRST CHECK IF THE AGENT IS ACTUALLY A HOUSEHOLD AGENT USING "ISINSTANCE"
         adapted_count = sum([1 for agent in self.schedule.agents if isinstance(agent, Households) and agent.is_adapted])
@@ -332,7 +358,7 @@ class AdaptationModel(Model):
                 flood_damages = []
                 # A Flood occurs
                 self.last_flood = self.schedule.steps
-                print('A flood has occurred in step: ', self.last_flood)
+                # print('A flood has occurred in step: ', self.last_flood)
                 
                 for agent in self.schedule.agents:
                     if agent.unique_id != 0: #if the agent in the scheduler is not the government

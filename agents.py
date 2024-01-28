@@ -22,6 +22,7 @@ class Households(Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
         self.is_adapted = False  # Initial adaptation status set to False
+        self.is_adapted_cumulatief = False
         
         self.background = random.random()
         self.threat_appraisal = random.random()
@@ -78,6 +79,11 @@ class Households(Agent):
         self.AM = np.mean([self.background, self.threat_appraisal, 
                         self.coping_appraisal, self.climate_related_beliefs, 
                         self.preceding_flood_engagement, self.external_influence])
+        if self.AM > 1:
+            self.AM = 1
+        elif self.AM < 0:
+            self.AM = 0
+
         return self.AM
     
     def check_elevation(self):
@@ -92,6 +98,7 @@ class Households(Agent):
                         self.budget -= self.model.elevation_cost
                         self.elevation_time_counter = 1 #this tick counts as one unit of time for implementing elevation
                         self.is_adapted = True
+                        self.is_adapted_cumulatief = True
                 
             elif self.elevation == 2:
                 #Agent is implementing elevation
@@ -121,6 +128,7 @@ class Households(Agent):
                     self.budget -= self.model.wet_proofing_cost
                     self.wet_proofing_time_counter = 1 #this tick counts as one unit of time for implementing elevation
                     self.is_adapted = True
+                    self.is_adapted_cumulatief = True
             
         elif self.wet_proofing == 2:
             #Agent is implementing wet_proofing
@@ -149,6 +157,7 @@ class Households(Agent):
                     self.budget -= self.model.dry_proofing_cost
                     self.dry_proofing_time_counter = 1 #this tick counts as one unit of time for implementing elevation
                     self.is_adapted = True
+                    self.is_adapted_cumulatief = True
             
         elif self.dry_proofing == 2:
             #Agent is implementing dry_proofing
@@ -293,6 +302,9 @@ class Households(Agent):
 
     def step(self):
         self.is_adapted = False
+        if self.elevation == 1 and self.dry_proofing ==1 and self.wet_proofing == 1: #cumulatief
+            self.is_adapted_cumulatief = False
+
         self.determine_AM()
         self.choose_measure()
         self.undergone_measures.pop(0)
@@ -322,9 +334,12 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
         self.agenda = False
         self.decision_made = False
         self.decision = None
-        self.flood_risk_threshold = 1.5
-        self.public_concern_threshold = 0.6
-        self.damage_threshold = 0.3
+        self.flood_risk_threshold = self.model.flood_risk_threshold
+        self.public_concern_threshold = self.model.public_concern_threshold
+        self.damage_threshold = self.model.damage_threshold
+
+        self.high_risk_bound = self.model.high_risk_bound
+        self.lower_risk_bound = self.model.lower_risk_bound
         
     def estimate_impact(self):
         """A government estimates the impact of a potential flood, 
@@ -336,8 +351,9 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
         return self.estimated_flood_impact
         
                
-    def make_decision(self, flood_risk, options_list, high, low):
+    def make_decision(self, flood_risk, options_list):
         """Government makes a decision on what kind of tool to deploy"""
+
         if self.decision_made:
             self.decision.change_status()
             
@@ -345,15 +361,15 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
         #First, the topic needs to be on the agenda:
             if self.agenda:#if a topic is on the agenda
         
-                if flood_risk >= high:
+                if flood_risk >= self.high_risk_bound:
                     # if the estimated risk is high, government will prioritise avg implementation time
                     lowest_planning = min([option.completion_time for option in options_list])
                     self.decision = [option for option in options_list if option.completion_time == lowest_planning][0]
-                elif low<=flood_risk< high:
+                elif self.lower_risk_bound<=flood_risk< self.high_risk_bound:
                     # if the estimated risk is medium, government will prioritise protection level
                     highest_protection = max([option.protection_level for option in options_list])
                     self.decision = [option for option in options_list if option.protection_level == highest_protection][0]
-                elif flood_risk < low:
+                elif flood_risk < self.lower_risk_bound:
                     lowest_cost = min([option.cost for option in options_list])
                     self.decision = [option for option in options_list if option.cost == lowest_cost][0]
                     
@@ -385,12 +401,13 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
         
     
     def step(self):
-        
-        self.estimate_impact()
-        flood_risk = self.assess_risk(self.model.flood_probability, self.estimated_flood_impact) #take flood probability and flood impact from model
-        public_concern = self.take_survey(self.model.avg_public_concern)
-        self.put_on_agenda(public_concern,flood_risk)
-        self.make_decision(flood_risk, self.model.options_list, high=2.9, low=1.9)
-        self.implement_decision()
-        
+        if self.model.government_decision:
+            self.estimate_impact()
+            flood_risk = self.assess_risk(self.model.flood_probability, self.estimated_flood_impact) #take flood probability and flood impact from model
+            public_concern = self.take_survey(self.model.avg_public_concern)
+            self.put_on_agenda(public_concern,flood_risk)
+            self.make_decision(flood_risk, self.model.options_list)
+            self.implement_decision()
+        else:
+            pass
 

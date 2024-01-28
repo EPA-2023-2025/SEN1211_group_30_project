@@ -33,7 +33,7 @@ from model import AdaptationModel
 m1 = AdaptationModel()
 
 for i in range(0, 40):
-    print('WE ARE NOW AT STEP:', i)
+    # print('WE ARE NOW AT STEP:', i)
     m1.step()
     
 agent_data = m1.datacollector.get_agent_vars_dataframe()
