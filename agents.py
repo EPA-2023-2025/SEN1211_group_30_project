@@ -11,17 +11,6 @@ from rbb import OrganizationInstrument
 from functions import generate_random_location_within_map_domain, get_flood_depth, calculate_basic_flood_damage, floodplain_multipolygon
 
 
-public_concern_metric = 1 #public concern metric should be a likert scale like distribution 1-5
-
-#could be defined in initialisation
-flood_risk_treshold = 2
-public_concern_treshold = 3
-
-dyke = OrganizationInstrument(name = 'Dyke', cost = 8, completion_time = 5, protection_level = 0.5, status = 1)
-wetland = OrganizationInstrument(name = 'Wetland', cost = 5,  completion_time = 2, protection_level = 0.5, status = 1)  
-options_list = [dyke, wetland]
-
-
 # Define the Households agent class
 class Households(Agent):
     """
@@ -268,6 +257,39 @@ class Households(Agent):
     #     """Count the number of neighbors within a given radius (number of edges away). This is social relation and not spatial"""
     #     neighbors = self.model.grid.get_neighborhood(self.pos, include_center=False, radius=radius)
     #     return len(neighbors)
+    
+    def check_elevation_protection(self):
+        if self.flood_depth_actual <= self.model.elevation_protection:
+            self.flood_damage_actual = self.flood_damage_actual * (1-self.model.elevation_effectiveness)
+        else:
+            self.elevation = 1
+        return
+                
+    def check_wet_and_dry_proofing_protection(self):
+        if self.flood_depth_actual <= self.model.dry_proofing_protection:
+            self.flood_damage_actual = self.flood_damage_actual * (1-self.model.dry_proofing_effectiveness) * (1-self.model.wet_proofing_effectiveness)
+        elif self.flood_depth_actual <= self.model.wet_proofing_protection:
+            self.dry_proofing = 1
+            self.flood_damage_actual = self.flood_damage_actual * (1-self.model.wet_proofing_effectiveness)
+        else:
+            self.dry_proofing = 1
+            self.wet_proofing = 1
+        return
+    
+    def check_dry_proofing_protection(self):
+        if self.flood_depth_actual <= self.model.dry_proofing_protection:
+            self.flood_damage_actual = self.flood_damage_actual * (1-self.model.dry_proofing_effectiveness)
+        else:
+            self.dry_proofing = 1
+        return
+    
+    def check_wet_proofing_protection(self):
+        if self.flood_depth_actual <= self.model.wet_proofing_protection:
+            self.flood_damage_actual = self.flood_damage_actual * (1-self.model.wet_proofing_effectiveness)
+        else:
+            self.wet_proofing = 1
+            
+        return
 
     def step(self):
         self.is_adapted = False
@@ -300,14 +322,17 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
         self.agenda = False
         self.decision_made = False
         self.decision = None
+        self.flood_risk_threshold = 1.5
+        self.public_concern_threshold = 0.6
+        self.damage_threshold = 0.3
         
-    def estimate_impact(self, damage_treshold):
+    def estimate_impact(self):
         """A government estimates the impact of a potential flood, 
         based on the damage from the previous flood"""
-        if self.model.avg_flood_damage >= damage_treshold:
-            self.estimated_flood_impact = random.randrange(7,10)
+        if self.model.avg_flood_damage >= self.damage_threshold:
+            self.estimated_flood_impact = random.randrange(5,10)
         else:
-            self.estimated_flood_impact = random.randrange(1,7)
+            self.estimated_flood_impact = random.randrange(1,5)
         return self.estimated_flood_impact
         
                
@@ -327,10 +352,10 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
                 elif low<=flood_risk< high:
                     # if the estimated risk is medium, government will prioritise protection level
                     highest_protection = max([option.protection_level for option in options_list])
-                    self.decision = [option for option in options_list if option.planning == highest_protection][0]
+                    self.decision = [option for option in options_list if option.completion_time == highest_protection][0]
                 elif flood_risk < low:
                     lowest_cost = min([option.cost for option in options_list])
-                    self.decision = [option for option in options_list if option.planning == lowest_cost][0]
+                    self.decision = [option for option in options_list if option.completion_time == lowest_cost][0]
                     
                     # if the estimated risk is low, government will prioritise cost 
                     # based on the organisation of the government, the implementation time of the option will change.
@@ -360,13 +385,12 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
         
     
     def step(self):
-        #RBBGovernment.step(self)
-        #if a decision has been made in the previous step, this doesnt have to happen anymore
-        self.estimate_impact(damage_treshold = 0.4)
+        
+        self.estimate_impact()
         flood_risk = self.assess_risk(self.model.flood_probability, self.estimated_flood_impact) #take flood probability and flood impact from model
         public_concern = self.take_survey(self.model.avg_public_concern)
-        self.put_on_agenda(public_concern,flood_risk, flood_risk_treshold, public_concern_treshold)
-        self.make_decision(flood_risk, self.model.options_list, high=0.8, low=0.4)
+        self.put_on_agenda(public_concern,flood_risk)
+        self.make_decision(flood_risk, self.model.options_list, high=2.9, low=1.9)
         self.implement_decision()
         
 
