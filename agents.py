@@ -217,18 +217,28 @@ class Households(Agent):
             self.check_dry_proofing()
        
     def update_threat_appraisal(self):
-        # a household can think it is protected if there is infrastructure. 
-        if self.model.infrastructure:
-            self.threat_appraisal = random.choice([0.9, 0.95, 1.0]) * self.threat_appraisal
+        # a household can think it is protected if there is infrastructure.
+        if self.in_floodplain:
+            if self.model.infrastructure:
+                self.threat_appraisal = self.threat_appraisal * random.uniform(0.7, 1.1)
+            else:
+                self.threat_appraisal = self.threat_appraisal * random.uniform(1.1, 1.2)
+                # self.threat_appraisal = random.choice([0.9, 0.95, 1.0]) * self.threat_appraisal
         else:
-            self.threat_appraisal = random.choice([1.0, 1.05, 1.1]) * self.threat_appraisal
+            self.threat_appraisal = self.threat_appraisal * random.uniform(0.5, 0.7)
+
+
         return
         
     def update_coping_appraisal(self):
+
         if self.budget >= self.model.upper_budget_threshold:
             self.coping_appraisal = 1.1 * self.coping_appraisal
         elif self.budget <= self.model.lower_budget_threshold:
-            self.coping_appraisal = 0.9 * self.coping_appraisal 
+            self.coping_appraisal = 0.9 * self.coping_appraisal
+
+        if self.coping_appraisal> 1:
+            self.coping_appraisal = 1
 
     def update_preceding_flood_engagement(self):
         flood_recency = 1 - ((self.model.schedule.steps - self.model.last_flood) / 20)
@@ -250,7 +260,12 @@ class Households(Agent):
         avg_neighbor_AM = np.mean([neighbor.AM for neighbor in neighbors])
         #print('Avg neighbor AM:', avg_neighbor_AM)
         # Calculate the external influence based on the difference between self.AM and neighbors AM
-        self.external_influence = self.external_influence * (1+(avg_neighbor_AM-self.AM))
+        # self.external_influence = self.external_influence * (1+(avg_neighbor_AM-self.AM))
+
+        if self.AM > avg_neighbor_AM:
+            self.external_influence = self.external_influence * 1.1
+        else:
+            self.external_influence = self.external_influence * 0.9
     
     def update_AM(self):
        #print('id:', self.unique_id, 'am:', self.AM)
