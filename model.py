@@ -160,14 +160,14 @@ class AdaptationModel(Model):
                         # "FloodDepthEstimated": "flood_depth_estimated",
                         # "FloodDamageEstimated" : "flood_damage_estimated",
                         # "FloodDepthActual": "flood_depth_actual",
-                         "FloodDamageActual" : (lambda a: a.flood_damage_actual if a.unique_id != 0 else None),
-                         "IsAdapted": (lambda a: a.is_adapted if a.unique_id != 0 else None),
+                         "FloodDamageActual" : (lambda a: a.flood_damage_actual if isinstance(a, Households) else None),
+                         "IsAdapted": (lambda a: a.is_adapted if isinstance(a, Households) else None),
                         # #"NeighborsCount": lambda a: a.count_neighbors(radius=1),
                         # "location":"location",
-                        "Adaptation_Motivation": (lambda a: a.AM if a.unique_id != 0 else None),
-                        "Financial_Loss": (lambda a: a.financial_loss if a.unique_id != 0 else None),
-                        "Agenda": (lambda a: a.agenda if a.unique_id == 0 else None),
-                        "Decision": (lambda a: a.decision if a.unique_id == 0 else None)
+                        "Adaptation_Motivation": (lambda a: a.AM if isinstance(a, Households) else None),
+                        "Financial_Loss": (lambda a: a.financial_loss if isinstance(a, Households) else None),
+                        "Agenda": (lambda a: a.agenda if isinstance(a, Government) else None),
+                        "Decision": (lambda a: a.decision if isinstance(a, Government) else None)
                         }
         #set up the data collector 
         self.datacollector = DataCollector(model_reporters=model_metrics , agent_reporters=agent_metrics)
@@ -237,8 +237,8 @@ class AdaptationModel(Model):
         # Plot the floodplain
         floodplain_gdf.plot(ax=ax, color='lightblue', edgecolor='k', alpha=0.5)
 
-        # Collect agent locations and statuses
-        households = [agent for agent in self.schedule.agents if agent.unique_id != 0]
+        # Collect agent locations and statuses if isinstance(agent, Households)
+        households = [agent for agent in self.schedule.agents if isinstance(agent, Households)]
         for agent in households:
             color = 'blue' if agent.is_adapted else 'red'
             ax.scatter(agent.location.x, agent.location.y, color=color, s=10, label=color.capitalize() if not ax.collections else "")
