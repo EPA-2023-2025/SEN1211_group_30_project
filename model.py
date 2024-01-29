@@ -32,8 +32,8 @@ class AdaptationModel(Model):
     simulates their behavior, and collects data. The network type can be adjusted based on study requirements.
     """
 
-    def __init__(self, 
-                 seed = 42,
+    def __init__(self,
+                 seed = None,
                  options_list = options_list, 
                  number_of_households = 50, # number of household agents
                  # Simplified argument for choosing flood map. Can currently be "harvey", "100yr", or "500yr".
