@@ -33,7 +33,7 @@ class AdaptationModel(Model):
     """
 
     def __init__(self, 
-                 seed = random.seed(42),
+                 seed = 42,
                  options_list = options_list, 
                  number_of_households = 50, # number of household agents
                  # Simplified argument for choosing flood map. Can currently be "harvey", "100yr", or "500yr".
@@ -51,7 +51,7 @@ class AdaptationModel(Model):
                  
                  # Probability of flood occurence
                  flood_probability = 0.05, #basecase, based on calculation that there have been 12 floods in the past 41 years in Houston (https://www.understandinghouston.org/topic/disasters/disaster-risks#history_of_disasters)
-                 
+                 economic_status = 'neutral', #basecase; other options: 'growth' or 'recession'
                 #intention action gap which ensures that only a certain percentage of households can implement a measure
                 intention_action_gap = 0.3,
                 low_threshold = 0.6, 
@@ -103,6 +103,7 @@ class AdaptationModel(Model):
         self.number_of_nearest_neighbours = number_of_nearest_neighbours
         
         self.flood_probability = flood_probability
+        self.economic_status = economic_status
         
         self.intention_action_gap = intention_action_gap
         self.elevation_cost = elevation_cost

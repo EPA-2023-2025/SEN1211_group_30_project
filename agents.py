@@ -326,7 +326,15 @@ class Households(Agent):
             self.wet_proofing = 1
             
         return
-
+    
+    def income(self):
+        if self.model.economic_status == 'growth':
+            self.budget += random.randint(500, 700)
+        elif self.model.economic_status == 'recession':
+            self.budget += random.randint(0, 200)
+        elif self.model.economic_status == 'neutral':
+            self.budget += random.randint(200, 500)
+        
     def step(self):
         self.is_adapted = False
         if self.elevation == 1 and self.dry_proofing ==1 and self.wet_proofing == 1: #cumulatief
@@ -340,7 +348,7 @@ class Households(Agent):
         else:
             self.undergone_measures.append(0)
         self.update_AM()
-        self.budget += self.savings_income
+        self.income()
         
         # GIVEN
         # Logic for adaptation based on estimated flood damage and a random chance.
