@@ -436,7 +436,7 @@ class Government(Agent, RBBGovernment):#inherit from RBBGovernment)
         
     
     def step(self):
-        if self.model.government_decision:
+        if self.model.options_list:
             self.estimate_impact()
             flood_risk = self.assess_risk(self.model.flood_probability, self.estimated_flood_impact) #take flood probability and flood impact from model
             public_concern = self.take_survey(self.model.avg_public_concern)

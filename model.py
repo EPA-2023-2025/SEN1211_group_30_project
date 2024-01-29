@@ -84,6 +84,9 @@ class AdaptationModel(Model):
                 damage_threshold = 0.3,
                 high_risk_bound = 2.9,
                 lower_risk_bound = 1.9,
+                
+                gov_detector = 0,
+                gov_structure = 'centralised' #government structure can be centralised or decentralised
                  ):
         
         super().__init__(seed = seed)
@@ -133,6 +136,12 @@ class AdaptationModel(Model):
         self.options_list = options_list
         self.infrastructure = False
 
+        self.gov_detector = gov_detector
+        
+        if gov_structure == 'centralised':
+            self.structure = GovernmentStructure.CENTRALISED
+        elif gov_structure == 'decentralised':
+            self.structure = GovernmentStructure.DECENTRALISED
 
         self.flood_risk_threshold = flood_risk_threshold
         self.public_concern_threshold = public_concern_threshold
@@ -160,7 +169,7 @@ class AdaptationModel(Model):
 
         
         #create government agent
-        government = Government(unique_id=0, model=self,structure=GovernmentStructure.CENTRALISED, detector=0)
+        government = Government(unique_id=0, model=self,structure=self.structure, detector=gov_detector)
         #government.decision = dyke
         self.schedule.add(government)
         # Data collection setup to collect data
