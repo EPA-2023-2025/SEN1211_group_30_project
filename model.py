@@ -84,8 +84,6 @@ class AdaptationModel(Model):
                 damage_threshold = 0.3,
                 high_risk_bound = 2.9,
                 lower_risk_bound = 1.9,
-
-                 government_decision = False
                  ):
         
         super().__init__(seed = seed)
@@ -142,8 +140,6 @@ class AdaptationModel(Model):
 
         self.high_risk_bound = high_risk_bound
         self.lower_risk_bound = lower_risk_bound
-
-        self.government_decision = government_decision
 
         # generating the graph according to the network used and the network parameters specified
         self.G = self.initialize_network()
