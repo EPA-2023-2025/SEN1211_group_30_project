@@ -69,7 +69,7 @@ class Households(Agent):
 
         # Add an attribute for the actual flood depth. This is set to zero at the beginning of the simulation since there is not flood yet
         # and will update its value when there is a shock (i.e., actual flood). Shock happens at some point during the simulation
-        #self.flood_depth_actual = 0
+        self.flood_depth_actual = 0
         
         #calculate the actual flood damage given the actual flood depth. Flood damage is a factor between 0 and 1
         self.flood_damage_actual = 0  #calculate_basic_flood_damage(flood_depth=self.flood_depth_actual)
@@ -216,40 +216,52 @@ class Households(Agent):
             # Only available measure is dry_proofing
             self.check_dry_proofing()
        
+    # def update_threat_appraisal(self):
+    #     # a household can think it is protected if there is infrastructure.
+    #     if self.in_floodplain:
+    #         if self.model.infrastructure:
+    #             self.threat_appraisal = self.threat_appraisal * random.uniform(0.7, 1.1)
+    #         else:
+    #             self.threat_appraisal = self.threat_appraisal * random.uniform(1.1, 1.2)
+    #             # self.threat_appraisal = random.choice([0.9, 0.95, 1.0]) * self.threat_appraisal
+    #     else:
+    #         self.threat_appraisal = self.threat_appraisal * random.uniform(0.5, 0.7)
+    #     return
+    
     def update_threat_appraisal(self):
-        # a household can think it is protected if there is infrastructure.
-        if self.in_floodplain:
-            if self.model.infrastructure:
-                self.threat_appraisal = self.threat_appraisal * random.uniform(0.7, 1.1)
+        # Initialize threat_appraisal when flood has occurred
+        if self.model.flood:
+            if self.flood_depth_actual >= 6:
+                self.threat_appraisal = random.uniform(0.8, 1.0)
+            elif 2 < self.flood_depth_actual < 6:
+                self.threat_appraisal = random.uniform(0.4, 0.8)
             else:
-                self.threat_appraisal = self.threat_appraisal * random.uniform(1.1, 1.2)
-                # self.threat_appraisal = random.choice([0.9, 0.95, 1.0]) * self.threat_appraisal
+                self.threat_appraisal = random.uniform(0.2, 0.4)            
         else:
-            self.threat_appraisal = self.threat_appraisal * random.uniform(0.5, 0.7)
-
-
-        return
+            self.threat_appraisal -= 0.01
+            
+        if self.threat_appraisal < 0:
+            self.threat_appraisal = 0
+            
         
     def update_coping_appraisal(self):
-
         if self.budget >= self.model.upper_budget_threshold:
             self.coping_appraisal = 1.1 * self.coping_appraisal
         elif self.budget <= self.model.lower_budget_threshold:
             self.coping_appraisal = 0.9 * self.coping_appraisal
 
-        if self.coping_appraisal> 1:
+        if self.coping_appraisal > 1:
             self.coping_appraisal = 1
 
     def update_preceding_flood_engagement(self):
-        flood_recency = 1 - ((self.model.schedule.steps - self.model.last_flood) / 20)
         if np.mean(self.undergone_measures) >= random.random():
             if self.model.last_flood != 0:
-                if flood_recency >= random.random():
+                if self.model.flood_recency >= random.random():
                     self.preceding_flood_engagement = self.preceding_flood_engagement * 1.1
             else:
                 self.preceding_flood_engagement= self.preceding_flood_engagement * 1.05
                 
-        elif flood_recency >= random.random():
+        elif self.model.flood_recency >= random.random():
                 self.preceding_flood_engagement = self.preceding_flood_engagement * 1.05
         else:
             self.preceding_flood_engagement = 0.9 * self.preceding_flood_engagement

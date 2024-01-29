@@ -402,16 +402,11 @@ class AdaptationModel(Model):
                                 elif agent.wet_proofing == 3:
                                     agent.check_wet_proofing_protection()
                                     
-                                    
                                 flood_damages.append(agent.flood_damage_actual)
                                 
                                 damage_costs = self.max_damage_costs * agent.flood_damage_actual
                                 agent.budget -= damage_costs
                                 agent.financial_loss += damage_costs
-                                if agent.budget < 0:
-                                    agent.budget = 0
-                                else:
-                                    pass
                             else:
                                 pass
                     else:
@@ -426,7 +421,7 @@ class AdaptationModel(Model):
                  
        #calculate the average public concern of the households in the model
         self.calculate_public_concern()       
-        
+        self.flood_recency = 1 - ((self.schedule.steps - self.last_flood) / 20)
         # Collect data and advance the model by one step
         self.datacollector.collect(self)
         self.schedule.step()
