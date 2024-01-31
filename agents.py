@@ -274,7 +274,7 @@ class Households(Agent):
         # Calculate the external influence based on the difference between self.AM and neighbors AM
         # self.external_influence = self.external_influence * (1+(avg_neighbor_AM-self.AM))
 
-        if self.AM > avg_neighbor_AM:
+        if self.AM < avg_neighbor_AM:
             self.external_influence = self.external_influence * 1.1
         else:
             self.external_influence = self.external_influence * 0.9
