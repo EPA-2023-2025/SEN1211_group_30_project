@@ -81,23 +81,22 @@ class RBBGovernment():
             self.agenda = False
         return self.agenda
     
-    def make_decision(self):
-        """Government makes a decision on whether to build infrastructure or not"""
-        pass 
+    def make_decision(self, options_list):
+        """Government makes a decision """
+        lowest_cost = min([option.cost for option in options_list])
+        self.decision = [option for option in options_list if option.cost == lowest_cost][0]
+        return self.decision
 
 
     def implement_decision(self):
         pass
-    
-    def check_status(self):
-        if self.agenda: 
-            status = 'Flood measure decision is on agenda'
-        else: 
-            status = 'Flood measure decision is NOT on agenda'
-        return status   
+        
+    def evaluate_decision(self):
+        pass
+       
             
     def step(self):
-        print('Status:', self.check_status() )
+        pass
         
         
 
